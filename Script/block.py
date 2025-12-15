@@ -19,5 +19,5 @@ class Block(Entity):
         self.block_type = block_type
         self.block_name = data['name'] if data else 'Unknown'
 
-    def hancur(self): # ntar kudevelop sfx
+    def hancur(self): 
         destroy(self)
