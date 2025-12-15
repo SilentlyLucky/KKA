@@ -10,8 +10,8 @@ class Zombie(Entity):
         super().__init__(
             parent=scene,
             model='quad',
-            color=color.clear,
-            origin_y=0, 
+            color=color.clear, # Fisik transparan
+            origin_y=0,        # Pivot di tengah badan
             position=kwargs.get('position', (0,0)),
             z=FG_Z
         )
@@ -19,11 +19,17 @@ class Zombie(Entity):
         self.world = world
         self.player = player
 
-        # --- 1. PARAMETER ---
+        # ==========================================
+        # 1. PARAMETER DINAMIS (0.9 x 1.8)
+        # ==========================================
+        
+        # --- FISIK (Hitbox) ---
         self.collider = 'box'
         self.scale = (0.9, 1.8) 
         
+        # --- VISUAL (Tampilan 1.0 x 2.0) ---
         target_w, target_h = 1.0, 2.0
+        # Hitung skala relatif: Target / Fisik
         self.visual_scale_relative = (target_w / self.scale_x, target_h / self.scale_y)
         
         self.visual = Entity(
@@ -35,72 +41,96 @@ class Zombie(Entity):
             double_sided=True 
         )
 
+        # --- STATS ---
         self.chase_speed = 3.5         
         self.idle_speed = 1.5          
-        self.jump_force = 9.5          
+        self.jump_force = 12           # Kuat untuk badan tinggi
         self.gravity_force = 30 
         self.max_fall_speed = 20
         
+        # --- AI SETTINGS ---
         self.vision_range = 8          
         self.vertical_vision = 4       
         self.give_up_range = 15        
         self.wander_radius = 10        
         self.path_update_rate = 0.20   
         self.frustration_duration = 3.0 
-        self.max_search_steps = 400
+        self.max_search_steps = 400    # Batas langkah A* (Python)
         self.idle_wait_duration = 5.0   
 
+        # --- STATE ---
         self.state = 'idle'
         self.path = []      
-        self.current_path_index = 0 # Tracker index path
+        self.current_path_index = 0     
         self.path_timer = 0
         self.frustration_timer = 0     
         self.idle_wait_timer = 0        
         self.last_attack_time = 0
+        
+        # Physics Vars
         self.y_velocity = 0
         self.is_grounded = False
 
     def update(self):
         try:
             dt = time.dt
+            
+            # ----------------------------------
+            # 1. LOGIKA UTAMA
+            # ----------------------------------
             self.attack_logic()
             
             if self.frustration_timer > 0: self.frustration_timer -= dt
             if self.idle_wait_timer > 0: self.idle_wait_timer -= dt 
 
+            # Respawn jika jatuh ke void
             if self.y < -20:
                 self.position = (self.player.x, self.player.y + 10)
                 self.y_velocity = 0
                 self.path = []
 
+            # ----------------------------------
+            # 2. VISUAL UPDATE
+            # ----------------------------------
             if self.state == 'chase': self.visual.color = color.red
             else: self.visual.color = color.violet 
 
+            # Flip Visual
             if self.path and self.current_path_index < len(self.path):
                 next_node = self.path[self.current_path_index]
                 base_scale = self.visual_scale_relative[0]
                 if next_node[0] > self.x: self.visual.scale_x = base_scale
                 elif next_node[0] < self.x: self.visual.scale_x = -base_scale
 
-            # --- AI ---
+            # ----------------------------------
+            # 3. AI DECISION MAKING
+            # ----------------------------------
             manhattan_dist = abs(self.player.x - self.x) + abs(self.player.y - self.y)
             can_see = self.check_vision()
             
+            # Prioritas 1: Lihat Player -> Chase
             if can_see and self.frustration_timer <= 0:
                 self.state = 'chase'
                 self.idle_wait_timer = 0
+            
+            # Prioritas 2: Player Hilang TAPI Path Masih Ada -> Lanjutkan (Persistence)
             elif self.state == 'chase' and self.path and self.current_path_index < len(self.path):
                 self.state = 'chase'
+            
+            # Prioritas 3: Idle
             else:
                 self.state = 'idle'
             
-            # --- PATHFINDING ---
+            # ----------------------------------
+            # 4. PATHFINDING MANAGER
+            # ----------------------------------
             self.path_timer += dt
             if self.path_timer > self.path_update_rate:
                 self.path_timer = 0
                 start_pos = (int(round(self.x)), int(round(self.y)))
                 
                 if self.is_grounded:
+                    # KASUS CHASE
                     if self.state == 'chase':
                         if can_see:
                             if manhattan_dist < (self.give_up_range + 10): 
@@ -109,14 +139,15 @@ class Zombie(Entity):
                                     found_path = self.astar(start_pos, target_pos)
                                     if found_path: 
                                         self.path = found_path
-                                        self.current_path_index = 0 # Reset Path
+                                        self.current_path_index = 0 # Reset Path Index
                                     else:
                                         self.path = []
                                         self.state = 'idle'
                                         self.frustration_timer = self.frustration_duration
                         else:
-                            pass 
+                            pass # Lanjutkan sisa path lama
 
+                    # KASUS IDLE / WANDER
                     elif self.state == 'idle' and (not self.path or self.current_path_index >= len(self.path)):
                         if self.idle_wait_timer <= 0:
                             radius = self.wander_radius
@@ -134,11 +165,14 @@ class Zombie(Entity):
                                 if path_found: break
                             if not path_found: self.idle_wait_timer = self.idle_wait_duration
 
-            # --- PHYSICS & MOVEMENT ---
+            # ====================================================
+            # 5. EKSEKUSI GERAKAN (PHYSICS)
+            # ====================================================
+            
             move_dir_x = 0
             is_jumping = False
             
-            # Cek apakah masih ada path yang harus dijalani
+            # A. Tentukan Arah Berdasarkan Path Node
             if self.path and self.current_path_index < len(self.path):
                 next_step = self.path[self.current_path_index]
                 
@@ -147,32 +181,34 @@ class Zombie(Entity):
                     is_jumping = True
                     if self.is_grounded: self.y_velocity = self.jump_force
                 
-                # Hitung Jarak X
                 diff_x = next_step[0] - self.x
                 
-                # Toleransi agar tidak bergetar di tempat
+                # Toleransi agar tidak bergetar (0.15)
                 if abs(diff_x) > 0.15: 
                     move_dir_x = 1 if diff_x > 0 else -1
                 else:
-                    # Jika X sudah pas, cek apakah Y juga sudah dekat?
-                    # Atau jika kita sudah melompat melewatinya
+                    # Cek apakah Y juga sudah sampai / sudah terlewati
                     if abs(next_step[1] - self.y) < 0.5 or self.y > next_step[1]:
-                        self.current_path_index += 1 # Node selesai, lanjut next
+                        self.current_path_index += 1 
             
-            # Jika path sudah habis
+            # Jika Path Habis
             elif self.path and self.current_path_index >= len(self.path):
                 if self.state == 'idle':
                     self.idle_wait_timer = self.idle_wait_duration
                 self.path = [] # Clear path
             
-            # --- RAYCAST MOVEMENT ---
+            # B. Raycast Movement (Horizontal)
             if move_dir_x != 0:
                 hit_wall = False
                 dist_x = (self.scale_x / 2) + 0.1
+                
+                # Cek 3 titik (Bawah, Tengah, Atas)
                 offsets_y = [-0.8, 0, 0.8] 
                 
                 for off_y in offsets_y:
+                    # FIX: Abaikan kaki saat lompat biar bisa naik
                     if is_jumping and off_y < 0.5: continue 
+                    
                     origin = self.position + Vec3(0, off_y, 0)
                     hit = raycast(origin, Vec3(move_dir_x, 0, 0), distance=dist_x, ignore=(self, self.visual), debug=False)
                     if hit.hit:
@@ -183,6 +219,7 @@ class Zombie(Entity):
                     current_speed = self.chase_speed if self.state == 'chase' else self.idle_speed
                     self.x += move_dir_x * current_speed * dt
 
+            # C. Gerak Vertikal & Gravitasi
             ray_origin_y = 0 
             ray_direction = Vec3(0, -1, 0)
             ray_dist = (self.scale_y / 2) + 0.1 
@@ -197,6 +234,8 @@ class Zombie(Entity):
             
             if hit_l.hit or hit_r.hit:
                 self.is_grounded = True
+                
+                # Logic Snap to Ground
                 floor_y = -9999
                 if hit_l.hit: floor_y = max(floor_y, hit_l.world_point.y)
                 if hit_r.hit: floor_y = max(floor_y, hit_r.world_point.y)
@@ -210,6 +249,7 @@ class Zombie(Entity):
                 self.y_velocity -= self.gravity_force * dt
                 if self.y_velocity < -self.max_fall_speed: self.y_velocity = -self.max_fall_speed
             
+            # Cek Kepala (Atap)
             if self.y_velocity > 0:
                 head_origin = self.position + Vec3(0, self.scale_y/2 - 0.1, 0)
                 hit_head = raycast(head_origin, Vec3(0,1,0), distance=0.2, ignore=(self, self.visual))
@@ -220,30 +260,39 @@ class Zombie(Entity):
         except Exception as e:
             self.path = []
 
-    # --- HELPERS (Sama seperti sebelumnya) ---
+    # ==========================================
+    # HELPER METHODS (PURE PYTHON)
+    # ==========================================
+
     def attack_logic(self):
         diff_x = abs(self.player.x - self.x)
         diff_y = abs(self.player.y - self.y)
+        # Range attack 8 arah
         if diff_x < 1.6 and diff_y < 1.9: 
             import time as t_module
             current_time = t_module.time()
             if current_time - self.last_attack_time > ZOMBIE_ATTACK_COOLDOWN:
                 self.last_attack_time = current_time
                 self.player.take_damage(ZOMBIE_DAMAGE)
+                
                 direction = 1 if self.player.x > self.x else -1
                 wall_behind = raycast(self.player.position, Vec3(direction,0,0), distance=1.0, ignore=(self, self.visual, self.player))
-                if not wall_behind.hit: self.player.x += direction * 0.5
+                
+                if not wall_behind.hit: 
+                    self.player.x += direction * 0.5
                 self.player.y += 0.5
 
     def find_valid_target(self, px, py):
         tx, ty = int(round(px)), int(round(py))
         if self.is_standable(tx, ty): return (tx, ty)
+        if self.is_standable(tx, ty-1): return (tx, ty-1)
         return None
 
     def check_vision(self):
         dist = distance(self.position, self.player.position)
         if dist > self.vision_range: return False 
         if abs(self.player.y - self.y) > self.vertical_vision: return False
+        
         eye_pos = self.position + Vec3(0, 0.6, 0)
         target_eye = self.player.position + Vec3(0, 0.6, 0)
         direction = (target_eye - eye_pos).normalized()
@@ -253,7 +302,9 @@ class Zombie(Entity):
             return False
         return True
     
+    # --- PATHFINDING PYTHON STANDARD ---
     def is_standable(self, x, y):
+        # Cek Kaki, Kepala, dan Lantai
         return ((x, y) not in self.world.block_positions) and \
                ((x, y+1) not in self.world.block_positions) and \
                ((x, y-1) in self.world.block_positions)
@@ -263,11 +314,14 @@ class Zombie(Entity):
         for dx, dy in [(1,0),(-1,0),(1,1),(-1,1),(1,-1),(-1,-1)]:
             nx, ny = x+dx, y+dy
             if not (0<=nx<WIDTH and 0<=ny<DEPTH): continue
+            
             if (nx,ny) in self.world.block_positions: continue
             if (nx,ny+1) in self.world.block_positions: continue
+            
             has_floor = (nx,ny-1) in self.world.block_positions
             if dy<=0 and not has_floor: continue
             if dy==1 and (x,y+2) in self.world.block_positions: continue
+            
             moves.append((nx,ny))
         return moves
 
@@ -276,6 +330,7 @@ class Zombie(Entity):
         p = [cur]; 
         while cur in cf: cur = cf[cur]; p.insert(0, cur)
         return p[1:]
+    
     def astar(self, start, goal):
         open_set = []; heapq.heappush(open_set, (0, start)); came_from = {}; g_score = {start:0}; f_score = {start:self.heuristic(start, goal)}; steps=0
         while open_set:
@@ -287,6 +342,7 @@ class Zombie(Entity):
                 tg = g_score[current]+1
                 if neighbor not in g_score or tg < g_score[neighbor]: came_from[neighbor]=current; g_score[neighbor]=tg; f_score[neighbor]=tg+self.heuristic(neighbor, goal); heapq.heappush(open_set, (f_score[neighbor], neighbor))
         return []
+        
     def bfs(self, start, goal):
         q=deque([(start,[start])]); v=set([start]); steps=0
         while q:
