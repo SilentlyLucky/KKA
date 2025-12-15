@@ -3,6 +3,7 @@ from config import *
 from block import Block
 import math
 import random
+from collections import deque
 
 class World(Entity):
     def __init__(self):
@@ -11,11 +12,13 @@ class World(Entity):
         self.block_positions = set()
         self.map_data = [[0 for y in range(DEPTH)] for x in range(WIDTH)]
         self.surface_heights = []
+        self.light_map = [[0 for y in range(DEPTH)] for x in range(WIDTH)]
         
         self.bg_parent = Entity(parent=self, name='Background_Layer')
         self.fg_parent = Entity(parent=self, name='Foreground_Layer')
 
         self.generate_data()
+        self.compute_light()
         self.render_world()
 
     def generate_data(self):
@@ -62,16 +65,65 @@ class World(Entity):
                     self.place_block(x, y, tipe)
 
     def place_block(self, x, y, block_type):
+        self.map_data[x][y] = 1
         b = Block(position=(x, y), block_type=block_type)
         b.parent = self.fg_parent
         self.blocks.append(b)
         self.block_positions.add((x, y))
+        self.compute_light()
+        self.apply_light_to_blocks()
         return b
 
     def remove_block(self, entity):
         if entity in self.blocks:
             self.blocks.remove(entity)
             pos = (int(entity.x), int(entity.y))
+            self.map_data[pos[0]][pos[1]] = 0
             if pos in self.block_positions:
                 self.block_positions.remove(pos)
             destroy(entity)
+            self.compute_light()
+            self.apply_light_to_blocks()
+
+    def compute_light(self):
+        self.light_map = [[0 for _ in range(DEPTH)] for _ in range(WIDTH)]
+        q = deque()
+
+        for x in range(WIDTH):
+            top_solid = -1
+            for y in range(DEPTH - 1, -1, -1):
+                if self.map_data[x][y] == 1:
+                    top_solid = y
+                    break
+            for y in range(top_solid + 1, DEPTH):
+                if self.map_data[x][y] == 0:
+                    self.light_map[x][y] = 15
+                    q.append((x, y, 15))
+
+        dirs = [(1,0),(-1,0),(0,1),(0,-1)]
+        while q:
+            x, y, level = q.popleft()
+            if level <= 1:
+                continue
+            nl = level - 1
+            for dx, dy in dirs:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < WIDTH and 0 <= ny < DEPTH:
+                    if self.map_data[nx][ny] == 0 and self.light_map[nx][ny] < nl:
+                        self.light_map[nx][ny] = nl
+                        q.append((nx, ny, nl))
+
+    def apply_light_to_blocks(self):
+        for b in self.blocks:
+            x, y = int(b.x), int(b.y)
+            if 0 <= x < WIDTH and 0 <= y < DEPTH:
+                lvl = self.light_map[x][y] if self.map_data[x][y] == 0 else self._light_for_solid(x, y)
+                b.set_light_level(lvl)
+
+    def _light_for_solid(self, x, y):
+        best = 0
+        for dx, dy in [(1,0),(-1,0),(0,1),(0,-1)]:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < WIDTH and 0 <= ny < DEPTH and self.map_data[nx][ny] == 0:
+                best = max(best, self.light_map[nx][ny])
+        return best
