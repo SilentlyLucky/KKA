@@ -46,11 +46,11 @@ WOODEN_SHOVEL = 201
 WOODEN_PICKAXE = 202
 WOODEN_AXE = 203
 
-# TOOLS - STONE
-STONE_SWORD = 210
-STONE_SHOVEL = 211
-STONE_PICKAXE = 212
-STONE_AXE = 213
+# TOOLS - WOODEN
+WOODEN_SWORD = 210
+WOODEN_SHOVEL = 211
+WOODEN_PICKAXE = 212
+WOODEN_AXE = 213
 
 # TOOLS - IRON
 IRON_SWORD = 220
@@ -62,13 +62,13 @@ IRON_AXE = 223
 DIAMOND_SWORD = 230
 DIAMOND_SHOVEL = 231
 DIAMOND_PICKAXE = 232
-DIAMOND_AXE = 233
+DIAMOND_AXE = 2333
 
 # ARMOR - IRON
 IRON_HELMET = 300
 IRON_CHESTPLATE = 301
 IRON_LEGGINGS = 302
-IRON_BOOTS = 303
+IRON_BOOTS = 30
 
 # ARMOR - DIAMOND
 DIAMOND_HELMET = 310
@@ -120,10 +120,10 @@ BLOCK_DATA = {
     IRON_SHOVEL: {'name': 'Iron Shovel', 'texture': '../Assets/Icons/Equipments/Iron_Shovel.png', 'solid': False},
     IRON_PICKAXE: {'name': 'Iron Pickaxe', 'texture': '../Assets/Icons/Equipments/Iron_Pickaxe.png', 'solid': False},
     IRON_AXE: {'name': 'Iron Axe', 'texture': '../Assets/Icons/Equipments/Iron_Axe.png', 'solid': False},
-    STONE_SWORD: {'name': 'Stone Sword', 'texture': '../Assets/Icons/Equipments/Stone_Sword.png', 'solid': False},
-    STONE_SHOVEL: {'name': 'Stone Shovel', 'texture': '../Assets/Icons/Equipments/Stone_Shovel.png', 'solid': False},
-    STONE_PICKAXE: {'name': 'Stone Pickaxe', 'texture': '../Assets/Icons/Equipments/Stone_Pickaxe.png', 'solid': False},
-    STONE_AXE: {'name': 'Stone Axe', 'texture': '../Assets/Icons/Equipments/Stone_Axe.png', 'solid': False},
+    WOODEN_SWORD: {'name': 'Wooden Sword', 'texture': '../Assets/Icons/Equipments/Wooden_Sword.png', 'solid': False},
+    WOODEN_SHOVEL: {'name': 'Wooden Shovel', 'texture': '../Assets/Icons/Equipments/Wooden_Shovel.png', 'solid': False},
+    WOODEN_PICKAXE: {'name': 'Wooden Pickaxe', 'texture': '../Assets/Icons/Equipments/Wooden_Pickaxe.png', 'solid': False},
+    WOODEN_AXE: {'name': 'Wooden Axe', 'texture': '../Assets/Icons/Equipments/Wooden_Axe.png', 'solid': False},
 }
 
 # --- BG ---

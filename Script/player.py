@@ -276,7 +276,6 @@ class Player(Entity):
                     tool_power = 0
                     
                     if held_item_id == WOODEN_PICKAXE: tool_power = 1
-                    elif held_item_id == STONE_PICKAXE: tool_power = 2
                     elif held_item_id == IRON_PICKAXE: tool_power = 3
                     elif held_item_id == DIAMOND_PICKAXE: tool_power = 4
                     
@@ -284,10 +283,8 @@ class Player(Entity):
                     # Level: 0=Lunak(Tanah/Kayu), 1=Batu/Coal, 2=Iron, 3=Diamond, 999=Bedrock
                     block_hardness = 0 
                     
-                    if block_type in (STONE, COAL):
+                    if block_type in (STONE, COAL, IRON):
                         block_hardness = 1
-                    elif block_type == IRON:
-                        block_hardness = 2
                     elif block_type == DIAMOND:
                         block_hardness = 3
                     elif block_type == BEDROCK:

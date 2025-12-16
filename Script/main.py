@@ -96,7 +96,7 @@ class GameOverOverlay(Entity):
 def cleanup_game():
     global game_world, player, mouse_catcher, game_over_ui, pause_ui, zombie_spawner
     camera.scripts.clear()
-
+    
     for ent in (player, mouse_catcher, game_world, game_over_ui, pause_ui):
         if ent:
             try:
@@ -108,7 +108,6 @@ def cleanup_game():
     mouse_catcher = None
     game_over_ui = None
     pause_ui = None
-    game_controller = None
 
 def start_new_game(name, world_type):
     global current_world_name
@@ -128,7 +127,6 @@ def load_saved_game(name):
 
 def launch_game_environment(world_type, save_data=None):
     global game_world, player, mouse_catcher, game_over_ui, pause_ui, is_paused, menu, zombie_spawner, game_controller
-
     if menu:
         try:
             menu.destroy()
@@ -152,7 +150,7 @@ def launch_game_environment(world_type, save_data=None):
     else:
         # NEW GAME: Find safe spawn height
         if center_x < len(game_world.surface_heights):
-            spawn_y = game_world.surface_heights[center_x] + 4  # 4 blocks above surface
+            spawn_y = game_world.surface_heights[center_x]  # 4 blocks above surface
         else:
             spawn_y = 40  # Fallback
         
@@ -250,7 +248,6 @@ def save_and_exit_game():
         i_data = player.inventory_system.get_save_data()
         
         save_game(current_world_name, w_data, p_data, i_data)
-    
     resume_game() 
     back_to_menu()
 

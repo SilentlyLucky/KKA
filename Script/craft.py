@@ -42,17 +42,17 @@ RECIPES_3x3 = {
      (PLANK, STICK, None),
      (None, STICK, None)): (WOODEN_AXE, 1),
      
-    # --- TOOLS (Stone) ---
-    ((None, STONE, None), (None, STONE, None), (None, STICK, None)): (STONE_SWORD, 1),
-    ((STONE, STONE, STONE), (None, STICK, None), (None, STICK, None)): (STONE_PICKAXE, 1),
-    ((None, STONE, None), (None, STICK, None), (None, STICK, None)): (STONE_SHOVEL, 1),
-    ((STONE, STONE, None), (STONE, STICK, None), (None, STICK, None)): (STONE_AXE, 1),
+    # --- TOOLS (Wooden) ---
+    ((None, PLANK, None), (None, PLANK, None), (None, STICK, None)): (WOODEN_SWORD, 1),
+    ((PLANK, PLANK, PLANK), (None, STICK, None), (None, STICK, None)): (WOODEN_PICKAXE, 1),
+    ((None, PLANK, None), (None, STICK, None), (None, STICK, None)): (WOODEN_SHOVEL, 1),
+    ((PLANK, PLANK, None), (PLANK, STICK, None), (None, STICK, None)): (WOODEN_AXE, 1),
 
-    # --- TOOLS (Iron) ---
-    ((None, IRON, None), (None, IRON, None), (None, STICK, None)): (IRON_SWORD, 1),
-    ((IRON, IRON, IRON), (None, STICK, None), (None, STICK, None)): (IRON_PICKAXE, 1),
-    ((None, IRON, None), (None, STICK, None), (None, STICK, None)): (IRON_SHOVEL, 1),
-    ((IRON, IRON, None), (IRON, STICK, None), (None, STICK, None)): (IRON_AXE, 1),
+    # --- TOOLS (Wooden) ---
+    ((None, PLANK, None), (None, PLANK, None), (None, STICK, None)): (WOODEN_SWORD, 1),
+    ((PLANK, PLANK, PLANK), (None, STICK, None), (None, STICK, None)): (WOODEN_PICKAXE, 1),
+    ((None, PLANK, None), (None, STICK, None), (None, STICK, None)): (WOODEN_SHOVEL, 1),
+    ((PLANK, PLANK, None), (PLANK, STICK, None), (None, STICK, None)): (WOODEN_AXE, 1),
 
     # --- TOOLS (Diamond) ---
     ((None, DIAMOND, None), (None, DIAMOND, None), (None, STICK, None)): (DIAMOND_SWORD, 1),
