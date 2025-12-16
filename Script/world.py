@@ -3,6 +3,7 @@ from config import *
 from block import Block
 import math
 import random
+from collections import deque
 
 
 class World(Entity):
@@ -14,6 +15,8 @@ class World(Entity):
         self.map_data = [[0 for y in range(DEPTH)] for x in range(WIDTH)]
         self.ore_map = {}
         self.surface_heights = []
+        self.solid_map = [[False for _ in range(DEPTH)] for _ in range(WIDTH)]
+        self.light_map = [[0 for y in range(DEPTH)] for x in range(WIDTH)]
         
         # Data Visual
         self.blocks = [] 
@@ -26,6 +29,12 @@ class World(Entity):
         self.bg_parent = Entity(parent=self, name='Background_Layer')
         self.fg_parent = Entity(parent=self, name='Foreground_Layer')
         self.plant_parent = Entity(parent=self, name='Plant_Layer')
+
+        self.generating = True
+        self.generate_data()
+        self.generating = False
+        self.compute_light()
+        self.apply_light_to_blocks()
         
         # Rendering state
         self.prev_cam_x = -9999
@@ -112,6 +121,13 @@ class World(Entity):
                     if h < DEPTH:
                         if self.map_data[x][h] == 0 and random.random() < 0.25:
                             self.map_data[x][h] = GRASS_PLANT
+
+    def is_standable(self, x, y):
+        return (
+            self.map_data[x][y] == 0 and
+            self.map_data[x][y+1] == 0 and
+            self.map_data[x][y-1] == 1
+    )
 
     def generate_trees(self):
         print("Generating Trees...")
@@ -326,6 +342,12 @@ class World(Entity):
         self.blocks.append(b)
         self.block_positions.add((x, y))
         self.block_dict[(x, y)] = b
+        self.solid_map[x][y] = b.solid
+
+        if not self.generating:
+            self.compute_light()
+            self.apply_light_to_blocks()
+            return b
         
         self.map_data[x][y] = block_type 
 
@@ -342,13 +364,19 @@ class World(Entity):
         if getattr(entity, "block_type", None) == BEDROCK:
             return
 
-        if entity in self.blocks: self.blocks.remove(entity)
+        if entity in self.blocks: 
+            self.blocks.remove(entity)
+            pos = (int(entity.x), int(entity.y))
+            self.map_data[pos[0]][pos[1]] = 0
+            self.solid_map[pos[0]][pos[1]] = False
         if pos in self.block_positions: self.block_positions.remove(pos)
         if pos in self.block_dict: self.block_dict.pop(pos)
         if 0 <= pos[0] < WIDTH and 0 <= pos[1] < DEPTH:
             self.map_data[pos[0]][pos[1]] = 0
             
         destroy(entity)
+        self.compute_light()
+        self.apply_light_to_blocks()
         self.trigger_sand_gravity(pos[0], pos[1] + 1)
 
     # ... Helper sand logic (Sama, tidak berubah) ...
@@ -441,3 +469,56 @@ class World(Entity):
             self.map_data[x][new_y] = 1 
 
         self.falling_blocks = []
+
+    def compute_light(self):
+        self.light_map = [[0 for _ in range(DEPTH)] for _ in range(WIDTH)]
+        q = deque()
+
+        for x in range(WIDTH):
+            top_solid = -1
+            for y in range(DEPTH - 1, -1, -1):
+                if self.map_data[x][y] == 1:
+                    top_solid = y
+                    break
+            for y in range(top_solid + 1, DEPTH):
+                if self.map_data[x][y] == 0:
+                    self.light_map[x][y] = 15
+                    q.append((x, y, 15))
+
+        for b in self.blocks:
+            if b.emits_light:
+                x, y = int(b.x), int(b.y)
+                self.light_map[x][y] = b.light_strength
+                q.append((x, y, b.light_strength))
+                
+        dirs = [(1,0),(-1,0),(0,1),(0,-1)]
+        while q:
+            x, y, level = q.popleft()
+            if level <= 1:
+                continue
+            nl = level - 1
+            for dx, dy in dirs:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < WIDTH and 0 <= ny < DEPTH:
+                    if not self.is_light_blocking(nx, ny) and self.light_map[nx][ny] < nl:
+                        self.light_map[nx][ny] = nl
+                        q.append((nx, ny, nl))
+
+
+    def apply_light_to_blocks(self):
+        for b in self.blocks:
+            x, y = int(b.x), int(b.y)
+            if 0 <= x < WIDTH and 0 <= y < DEPTH:
+                lvl = self.light_map[x][y] if self.map_data[x][y] == 0 else self._light_for_solid(x, y)
+                b.set_light_level(lvl)
+
+    def _light_for_solid(self, x, y):
+        best = 0
+        for dx, dy in [(1,0),(-1,0),(0,1),(0,-1)]:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < WIDTH and 0 <= ny < DEPTH:
+                best = max(best, self.light_map[nx][ny])
+        return max(0, best - 1)
+    
+    def is_light_blocking(self, x, y):
+        return self.solid_map[x][y]

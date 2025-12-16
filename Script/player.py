@@ -39,22 +39,17 @@ class Player(Entity):
         self.visual = Entity(
             parent=self,
             scale=(calc_scale_x, calc_scale_y), # Skala otomatis
-            position=(0, 0, 0)
+            position=(0, 0, 0),
+            color=color.white
         )
+
+        mouse.ignore = (self, self.visual)
         
         self.skin()
 
         # Cursor
-        """ self.cursor = Entity(parent=camera, model='quad', color=color.red, scale=.05, rotation_z=45, z=-1) """
-        self.cursor_highlight = Entity(
-        parent=scene, 
-        model='quad', 
-        color=color.rgba(255, 0, 0, 100),
-        scale=(1.1, 1.1), 
-        z=FG_Z - 0.2, 
-        enabled=False,
-        double_sided=True
-        )
+        self.cursor = Entity(parent=camera, model='quad', color=color.red, scale=.05, rotation_z=45, z=-1)
+
         # Physics Stats
         self.walk_speed = 5
         self.jump_force = 12
@@ -64,10 +59,39 @@ class Player(Entity):
         self.is_grounded = False
 
         # Health
+        self.damage_flash_timer = 0
         self.max_health = PLAYER_MAX_HEALTH
         self.health = self.max_health
         self.health_bar_bg = Entity(parent=camera.ui, model='quad', color=color.red.tint(-0.2), scale=(0.5, 0.03), position=(-0.6, 0.45))
         self.health_bar = Entity(parent=camera.ui, model='quad', color=color.green, scale=(0.5, 0.03), position=(-0.6, 0.45))
+
+    def is_solid_hit(self, hit):
+        return (
+            hit.hit and
+            hasattr(hit.entity, 'solid') and
+            hit.entity.solid
+        )
+    
+    def get_env_light(self):
+        x = int(round(self.x))
+        y = int(self.y - self.scale_y / 2) + 1
+
+        if 0 <= x < WIDTH and 0 <= y < DEPTH:
+            return self.world.light_map[x][y]
+        return 14
+
+    def apply_environment_light(self):
+        lvl = self.get_env_light()
+        lvl = max(0, min(14, lvl))
+
+        brightness = 0.15 + 0.85 * (lvl / 14.0)
+        base_color = color.white * brightness
+
+        if self.damage_flash_timer > 0:
+            self.visual.color = color.red
+            self.damage_flash_timer -= time.dt
+        else:
+            self.player_graphics.color = color.white * brightness
 
     def update(self):
         
@@ -88,6 +112,7 @@ class Player(Entity):
             self.die()
         
         dt = time.dt
+        self.apply_environment_light()
         self.update_health_ui()
         if self.y < -20: self.take_damage(20); self.respawn()
 
@@ -144,11 +169,11 @@ class Player(Entity):
         hit_l = raycast(pos_left, ray_direction, distance=ray_dist, ignore=(self, self.visual), debug=False)
         hit_r = raycast(pos_right, ray_direction, distance=ray_dist, ignore=(self, self.visual), debug=False)
         
-        if hit_l.hit or hit_r.hit:
+        if self.is_solid_hit(hit_l) or self.is_solid_hit(hit_r):
             self.is_grounded = True
             floor_y = -9999
-            if hit_l.hit: floor_y = max(floor_y, hit_l.world_point.y)
-            if hit_r.hit: floor_y = max(floor_y, hit_r.world_point.y)
+            if self.is_solid_hit(hit_l): floor_y = max(floor_y, hit_l.world_point.y)
+            if self.is_solid_hit(hit_r): floor_y = max(floor_y, hit_r.world_point.y)
             target_y = floor_y + (self.scale_y / 2)
             
             if self.y_velocity <= 0:
@@ -163,7 +188,7 @@ class Player(Entity):
         if self.y_velocity > 0:
             head_origin = self.position + Vec3(0, self.scale_y/2 - 0.1, 0)
             hit_head = raycast(head_origin, Vec3(0,1,0), distance=0.2, ignore=(self, self.visual), debug=False)
-            if hit_head.hit:
+            if self.is_solid_hit(hit_head):
                 self.y_velocity = 0 
 
         self.y += self.y_velocity * dt
@@ -194,13 +219,15 @@ class Player(Entity):
                     self.world.remove_block(mouse.hovered_entity)
         if key == 'right mouse down':
             if mouse.world_point:
-                mx = round(mouse.world_point.x)
-                my = round(mouse.world_point.y)
-                dist_to_mouse = distance(Vec3(mx, my, 0), self.position)
-                
-                if dist_to_mouse < 4 and dist_to_mouse > 0.8:
+                mx, my = round(mouse.world_point.x), round(mouse.world_point.y)
+                dx = abs(mx - self.x)
+                dy = abs(my - self.y)
+                safe_x = (self.scale_x/2) + 0.5 
+                safe_y = (self.scale_y/2) + 0.5 
+                if not (dx < safe_x and dy < safe_y):
                     if (mx, my) not in self.world.block_positions:
-                        self.world.place_block(mx, my, DIRT)
+                        if distance((mx, my, 0), self.position) < 5:
+                            self.world.place_block(mx, my, TORCH)
                             
     def on_destroy(self):
         if hasattr(self, 'cursor_highlight') and self.cursor_highlight:

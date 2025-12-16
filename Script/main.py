@@ -1,7 +1,7 @@
 from ursina import *
 from world import World
 from player import Player
-from mob import Zombie  # <--- IMPORT ZOMBIE
+from mob import ZombieSpawner
 from config import WIDTH
 from scene import Scene
 from menu import Menu
@@ -27,6 +27,7 @@ menu = None # Inisialisasi variabel menu global
 current_world_name = None
 current_world_type = None
 is_paused = False
+zombie_spawner = None
 
 center_x = int(WIDTH / 2)
 spawn_y = 40
@@ -83,8 +84,14 @@ class GameOverOverlay(Entity):
         self.enabled = True
 
 def cleanup_game():
-    global game_world, player, mouse_catcher, game_over_ui, pause_ui
+    global game_world, player, mouse_catcher, game_over_ui, pause_ui, zombie_spawner
     camera.scripts.clear()
+
+    if zombie_spawner:
+        zombie_spawner.cleanup() 
+        destroy(zombie_spawner)
+        zombie_spawner = None
+
     for ent in (player, mouse_catcher, game_world, game_over_ui, pause_ui):
         if ent:
             try:
@@ -115,7 +122,7 @@ def load_saved_game(name):
         back_to_menu()
 
 def launch_game_environment(world_type, save_data=None):
-    global game_world, player, mouse_catcher, game_over_ui, pause_ui, is_paused, menu
+    global game_world, player, mouse_catcher, game_over_ui, pause_ui, is_paused, menu, zombie_spawner
     
     # --- PERBAIKAN 1: HAPUS MENU LOADING ---
     # Kita harus menghancurkan objek menu (yang berisi teks "Generating World...")
@@ -165,9 +172,8 @@ def launch_game_environment(world_type, save_data=None):
     camera.y = player.y + 1
     
 def update():
-    zombie_spawner.update()
-
-    
+    if zombie_spawner: 
+        zombie_spawner.update()
 
 
 # --- Mouse Catcher ---
