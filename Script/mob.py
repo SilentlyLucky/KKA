@@ -70,7 +70,7 @@ class Zombie(Entity):
         self.skin()
 
     def skin(self):
-        self.zombie_graphics = SpriteSheetAnimation('../Assets/Sprite/Zombie.png', parent=self.visual, tileset_size=(8,1), fps=6, animations={
+        self.zombie_graphics = SpriteSheetAnimation('../Assets/Sprite/Zombie.png', parent=self.visual, tileset_size=(8,1), fps=8, animations={
             'idle' : ((0,0), (0,0)),        # makes an animation from (0,0) to (0,0), a single frame
             'walk_right' : ((1,0), (3,0)),
             'walk_left' : ((4,0), (7,0)),
