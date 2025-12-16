@@ -2,10 +2,12 @@ from ursina import *
 from config import *
 from block import Block
 import time
+from inventory import Inventory 
+from craftingtable import CraftingTableUI
+from bed import set_spawn_point
 
 class Player(Entity):
-    def __init__(self, world_instance, on_death=None, **kwargs):
-        # --- INDUK (FISIK) ---
+    def __init__(self, world_instance, on_death=None, inventory_data=None, saved_spawn_point=None, **kwargs):
         if 'position' not in kwargs:
             kwargs['position'] = (WIDTH/2, 20)
 
@@ -20,8 +22,12 @@ class Player(Entity):
         self.on_death = on_death or (lambda: None)
         self.dead = False
 
-        self.spawn_x = int(self.x)
-        self.spawn_y = int(self.y)
+        if saved_spawn_point:
+            self.spawn_x = saved_spawn_point[0]
+            self.spawn_y = saved_spawn_point[1]
+        else:
+            self.spawn_x = int(self.x)
+            self.spawn_y = int(self.y)
         
         self.collider = 'box' 
         self.scale = (0.9, 1.8) 
@@ -63,6 +69,12 @@ class Player(Entity):
         self.max_fall_speed = 20
         self.y_velocity = 0
         self.is_grounded = False
+
+        # Inventory
+        self.inventory_system = Inventory(load_data=inventory_data)
+        
+        # UI Crafting Table 3x3
+        self.crafting_table_ui = CraftingTableUI(inventory_ref=self.inventory_system)
 
         # Health
         self.damage_flash_timer = 0
@@ -232,6 +244,18 @@ class Player(Entity):
     def input(self, key):
         if self.dead: return
 
+        if key == 'e':
+            if self.crafting_table_ui.enabled:
+                self.crafting_table_ui.close()
+            else:
+                self.inventory_system.toggle()
+            return
+        
+        if not self.inventory_system.is_open and not self.crafting_table_ui.enabled:
+            if key in ('1', '2', '3', '4', '5', '6', '7', '8', '9'):
+                slot_idx = int(key) - 1
+                self.inventory_system.select_slot(slot_idx)
+
         if key == 'space':
             if self.is_grounded:
                 self.y_velocity = self.jump_force
@@ -241,15 +265,67 @@ class Player(Entity):
         if key == 'left mouse down':
             if mouse.hovered_entity and isinstance(mouse.hovered_entity, Block): 
                 if distance(self.position, mouse.hovered_entity.position) < 5:
-                    self.world.remove_block(mouse.hovered_entity)
+                    block_type = mouse.hovered_entity.block_type
+
+                    # --- LOGIKA MINING TIER ---
+                        
+                    # 1. Tentukan Level Pickaxe yang sedang dipegang
+                    held_item_id = self.inventory_system.get_active_block()
+                    
+                    # Level: 0=Tangan, 1=Wood, 2=Stone, 3=Iron, 4=Diamond
+                    tool_power = 0
+                    
+                    if held_item_id == WOODEN_PICKAXE: tool_power = 1
+                    elif held_item_id == STONE_PICKAXE: tool_power = 2
+                    elif held_item_id == IRON_PICKAXE: tool_power = 3
+                    elif held_item_id == DIAMOND_PICKAXE: tool_power = 4
+                    
+                    # 2. Tentukan Kekerasan Block (Requirement)
+                    # Level: 0=Lunak(Tanah/Kayu), 1=Batu/Coal, 2=Iron, 3=Diamond, 999=Bedrock
+                    block_hardness = 0 
+                    
+                    if block_type in (STONE, COAL):
+                        block_hardness = 1
+                    elif block_type == IRON:
+                        block_hardness = 2
+                    elif block_type == DIAMOND:
+                        block_hardness = 3
+                    elif block_type == BEDROCK:
+                        block_hardness = 999 # Tidak bisa hancur
+                    
+                    # 3. Cek Apakah Kuat
+                    can_break = tool_power >= block_hardness
+                    
+                    if can_break:
+                        self.world.remove_block(mouse.hovered_entity)
+                        
+                        # --- LOGIKA DROP ITEM ---
+                        item_to_give = block_type
+                        if block_type == COAL: item_to_give = COAL_ITEM
+                        elif block_type == IRON: item_to_give = IRON_INGOT
+                        elif block_type == DIAMOND: item_to_give = DIAMOND_GEM
+                        elif block_type == GLASS: item_to_give = None 
+                        
+                        if item_to_give:
+                            self.inventory_system.add_item(item_to_give)
+                    else:
+                        # Opsional: Beri efek visual/suara kalau gagal break
+                        print("Pickaxe not strong enough!") 
+
         if key == 'right mouse down':
             print("=== RIGHT MOUSE CLICKED ===")
-            
+            if mouse.hovered_entity and isinstance(mouse.hovered_entity, Block):
+                    if distance(self.position, mouse.hovered_entity.position) < 5:
+                        if mouse.hovered_entity.block_type == CRAFTING_TABLE:
+                            self.crafting_table_ui.open()
+                            return
+                        elif mouse.hovered_entity.block_type == BED_BLOCK:
+                            set_spawn_point(self, mouse.hovered_entity.position)
+                            return
+
             if mouse.position:
-                aspect_ratio = window.aspect_ratio
                 fov = camera.fov
-                
-                world_x = camera.x + (mouse.x * fov * aspect_ratio)
+                world_x = camera.x + (mouse.x * fov)
                 world_y = camera.y + (mouse.y * fov)
                 
                 mx, my = round(world_x), round(world_y)
@@ -276,7 +352,14 @@ class Player(Entity):
                         
                         if (mx, my) not in self.world.block_positions:
                             print("✓ Position is empty - PLACING BLOCK!")
-                            self.world.place_block(mx, my, TORCH)
+                            block_to_place = self.inventory_system.get_active_block()
+                            
+                            if block_to_place:
+                                real_block = block_to_place
+                                if block_to_place == BED_ITEM: real_block = BED_BLOCK
+                                if real_block < 100:
+                                    self.world.place_block(mx, my, real_block)
+                                    self.inventory_system.decrease_active_item()
                         else:
                             print("✗ Position already occupied")
                     else:
@@ -289,11 +372,17 @@ class Player(Entity):
     def on_destroy(self):
         if hasattr(self, 'cursor_highlight') and self.cursor_highlight:
             destroy(self.cursor_highlight)
+        if hasattr(self, 'inventory_system') and self.inventory_system:
+            destroy(self.inventory_system)
+        if hasattr(self, 'crafting_table_ui') and self.crafting_table_ui:
+            destroy(self.crafting_table_ui)
 
     def respawn(self):
         self.position = (self.spawn_x, self.spawn_y)
-        self.velocity = (0,0)
+        self.y_velocity = 0
+        self.health = self.max_health
         self.dead = False
+        print(f"Respawned at: ({self.spawn_x}, {self.spawn_y})")
 
     def die(self):
         if not self.dead:

@@ -10,7 +10,7 @@ if not os.path.exists(SAVE_FOLDER):
 def get_save_path(world_name):
     return os.path.join(SAVE_FOLDER, f"{world_name}.ursinasave")
 
-def save_game(world_name, world_data, player_data):
+def save_game(world_name, world_data, player_data, inventory_data):
     """
     Menyimpan data world dan player ke file.
     """
@@ -19,6 +19,8 @@ def save_game(world_name, world_data, player_data):
         "map_data": world_data["map_data"],
         "ore_map": world_data["ore_map"],
         "player_pos": player_data["position"],
+        "spawn_point": player_data["spawn_point"],
+        "inventory": inventory_data, 
         "seed": world_data.get("seed", 42)
     }
     

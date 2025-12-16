@@ -94,11 +94,16 @@ BLOCK_DATA = {
     CRAFTING_TABLE: {'name': 'Crafting Table', 'texture': '../Assets/Textures/crafting_table.png', 'solid': True},
     PLANK: {'name': 'Oak Plank', 'texture': '../Assets/Textures/plank.png', 'solid': True},
     BED_BLOCK: {'name': 'Bed', 'texture': '../Assets/Textures/bed_side.png', 'solid': True}, # Visual di world
-    STICK: {'name': 'Stick', 'texture': '../Assets/Icons/Item/Stick.png', 'solid': False},
+    STICK: {'name': 'Stick', 'texture': '../Assets/Icons/Materials/Stick.png', 'solid': False},
     BED_ITEM: {'name': 'Bed Item', 'texture': '../Assets/Icons/Furniture/Red_Bed.png', 'solid': False}, # Item tempat tidur di tangan
     RAW_CHICKEN: {'name': 'Raw Chicken', 'texture': '../Assets/Icons/Item/Raw_Chicken.png', 'solid': False},
     COOKED_CHICKEN: {'name': 'Cooked Chicken', 'texture': '../Assets/Icons/Item/Cooked_Chicken.png', 'solid': False},
     FEATHER: {'name': 'Feather', 'texture': '../Assets/Icons/Item/Feather.png', 'solid': False},
+
+    DIAMOND_GEM: {'name': 'Diamond Gem', 'texture': '../Assets/Icons/Materials/Diamond.png', 'solid': False},
+    COAL_ITEM: {'name': 'Coal Item', 'texture': '../Assets/Icons/Materials/Coal.png', 'solid': False},
+    IRON_INGOT: {'name': 'Iron Ingot', 'texture': '../Assets/Icons/Materials/Iron_Ingot.png', 'solid': False},
+
     DIAMOND_HELMET: {'name': 'Diamond Helmet', 'texture': '../Assets/Icons/Armor/Diamond_Helmet.png', 'solid': False},
     DIAMOND_CHESTPLATE: {'name': 'Diamond Chestplate', 'texture': '../Assets/Icons/Armor/Diamond_Chestplate.png', 'solid': False},
     DIAMOND_LEGGINGS: {'name': 'Diamond Leggings', 'texture': '../Assets/Icons/Armor/Diamond_Leggings.png', 'solid': False},

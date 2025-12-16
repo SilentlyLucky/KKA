@@ -87,7 +87,14 @@ class CraftingTableUI(Entity):
         )
         slot.my_index = index 
         
-        slot.item_icon = Entity(parent=slot, model='quad', scale=0.8, color=color.white, z=-0.1, visible=False)
+        slot.item_icon = Entity(
+            parent=slot, 
+            model='quad', 
+            scale=0.8, 
+            color=color.white,
+            z=-0.1, 
+            visible=False
+        ) 
         slot.item_count_text = Text(parent=slot, text="", origin=(0.5, -0.5), position=(0.45, -0.45), scale=2.5 * scale, color=color.white, z=-1)
         slot.item_count_shadow = Text(parent=slot, text="", origin=(0.5, -0.5), position=(0.46, -0.46), scale=2.6 * scale, color=color.black, z=-0.9)
         
@@ -282,8 +289,15 @@ class CraftingTableUI(Entity):
 
     def _update_single_slot(self, slot, item_data):
         if item_data:
-            data = BLOCK_DATA.get(item_data['id'], {'color': color.white})
-            slot.item_icon.color = data['color']
+            data = BLOCK_DATA.get(item_data['id'])
+
+            if data and 'texture' in data:
+                # Muat tekstur dari BLOCK_DATA dan pastikan warna ikon putih
+                slot.item_icon.texture = data['texture']
+                slot.item_icon.color = color.white 
+            else:
+                slot.item_icon.color = color.red
+
             slot.item_icon.visible = True
             
             if item_data['count'] > 1:
@@ -298,6 +312,7 @@ class CraftingTableUI(Entity):
                 slot.item_count_text.enabled = False
                 slot.item_count_shadow.text = ""
                 slot.item_count_shadow.enabled = False
+
         else:
             slot.item_icon.visible = False
             slot.item_count_text.text = ""

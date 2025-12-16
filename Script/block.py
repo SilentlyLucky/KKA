@@ -20,6 +20,7 @@ class Block(Entity):
             double_sided=is_double_sided
         )
         
+        self.block_type = block_type
         self.block_name = data['name'] if data else 'Unknown'
         self.emits_light = data.get('emits_light', False)
         self.light_strength = data.get('light_level', 0)

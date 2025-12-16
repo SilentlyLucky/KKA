@@ -15,7 +15,7 @@ window.title = "Minecraft 2D - Zombie AI"
 
 # --- Setup Camera ---
 camera.orthographic = True
-camera.fov = 20
+camera.fov = 10
 
 # Game state
 game_world = None
@@ -29,20 +29,18 @@ current_world_type = None
 is_paused = False
 zombie_spawner = None
 
-center_x = int(WIDTH / 2)
-spawn_y = 40
+class GameInputController(Entity):
+    def __init__(self):
+        super().__init__(ignore_paused=True)
 
-inv_data = None
-saved_spawn_point = None # Default
-
-""" if save_data:
-    spawn_pos = save_data.get('player_pos', (center_x, spawn_y))
-    inv_data = save_data.get('inventory', None)
-    saved_spawn_point = save_data.get('spawn_point', None) # Load spawn point
-else:
-    if center_x < len(game_world.surface_heights):
-        spawn_y = game_world.surface_heights[center_x] + 4
-    spawn_pos = (center_x, spawn_y) """
+    def input(self, key):
+        global is_paused
+        if player and not menu:
+            if key == 'l':
+                if not is_paused:
+                    pause_game()
+                else:
+                    resume_game()
 
 # --- PAUSE MENU UI ---
 class PauseMenu(Entity):
@@ -99,11 +97,6 @@ def cleanup_game():
     global game_world, player, mouse_catcher, game_over_ui, pause_ui, zombie_spawner
     camera.scripts.clear()
 
-    if zombie_spawner:
-        zombie_spawner.cleanup() 
-        destroy(zombie_spawner)
-        zombie_spawner = None
-
     for ent in (player, mouse_catcher, game_world, game_over_ui, pause_ui):
         if ent:
             try:
@@ -115,6 +108,7 @@ def cleanup_game():
     mouse_catcher = None
     game_over_ui = None
     pause_ui = None
+    game_controller = None
 
 def start_new_game(name, world_type):
     global current_world_name
@@ -130,11 +124,10 @@ def load_saved_game(name):
         launch_game_environment(world_type=data['world_type'], save_data=data)
     else:
         print("Error loading game")
-        # Jika load gagal, kembali ke menu (menu harus dibuat ulang karena sudah didestroy saat loading)
         back_to_menu()
 
 def launch_game_environment(world_type, save_data=None):
-    global game_world, player, mouse_catcher, game_over_ui, pause_ui, is_paused, menu, zombie_spawner
+    global game_world, player, mouse_catcher, game_over_ui, pause_ui, is_paused, menu, zombie_spawner, game_controller
 
     if menu:
         try:
@@ -148,24 +141,39 @@ def launch_game_environment(world_type, save_data=None):
     is_paused = False
 
     game_world = World(world_type=world_type, save_data=save_data)
-    
     game_world.update()
- 
+
+    center_x = int(WIDTH / 2)
+
     if save_data:
         spawn_pos = save_data.get('player_pos', (center_x, 40))
+        inv_data = save_data.get('inventory', None)
+        saved_spawn_point = save_data.get('spawn_point', None)
     else:
+        # NEW GAME: Find safe spawn height
         if center_x < len(game_world.surface_heights):
-            spawn_y = game_world.surface_heights[center_x] + 4
+            spawn_y = game_world.surface_heights[center_x] + 4  # 4 blocks above surface
+        else:
+            spawn_y = 40  # Fallback
+        
         spawn_pos = (center_x, spawn_y)
+        inv_data = None
+        saved_spawn_point = None
+        
+        print(f"New game spawn position: {spawn_pos}")
 
     game_over_ui = GameOverOverlay(on_respawn=restart_game, on_exit=back_to_menu)
     pause_ui = PauseMenu(on_resume=resume_game, on_save_exit=save_and_exit_game)
 
+    game_controller = GameInputController()
+    
     player = Player(
         world_instance=game_world, 
         position=spawn_pos,
-        on_death=lambda: game_over_ui.show()
+        inventory_data=inv_data,
+        saved_spawn_point=saved_spawn_point
     )
+
     zombie_spawner = ZombieSpawner(game_world, player)
 
     camera.scripts.clear()
@@ -173,6 +181,9 @@ def launch_game_environment(world_type, save_data=None):
 
     camera.x = player.x
     camera.y = player.y + 1
+
+    mouse.locked = False
+    mouse.visible = True
     
 def update():
     if zombie_spawner: 
@@ -203,17 +214,8 @@ def back_to_menu():
         except:
             pass
     menu = Menu(on_start_new_callback=start_new_game, on_load_callback=load_saved_game, on_exit_callback=exit_app)
-
-# --- PAUSE SYSTEM ---
-def input(key):
-    global is_paused
-    
-    if player and not menu:
-        if key == 'l':
-            if not is_paused:
-                pause_game()
-            else:
-                resume_game()
+    mouse.locked = False
+    mouse.visible = True
 
 def pause_game():
     global is_paused
@@ -235,14 +237,21 @@ def resume_game():
 
 def save_and_exit_game():
     global current_world_name
-    
     print("Saving...")
     if game_world and player and current_world_name:
         w_data = game_world.get_save_data()
-        p_data = {"position": (player.x, player.y)}
-        save_game(current_world_name, w_data, p_data)
+        
+        # Simpan spawn point yang benar (dari variable spawn_x/y player)
+        p_data = {
+            "position": (player.x, player.y),
+            "spawn_point": (player.spawn_x, player.spawn_y) 
+        }
+        # Ambil data inventory dari player
+        i_data = player.inventory_system.get_save_data()
+        
+        save_game(current_world_name, w_data, p_data, i_data)
     
-    resume_game()
+    resume_game() 
     back_to_menu()
 
 scene = Scene()

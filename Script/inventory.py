@@ -19,7 +19,7 @@ class Inventory(Entity):
         self.is_open = False  
         
         self.hand_item = None 
-        self.hand_icon = Entity(parent=camera.ui, model='quad', scale=0.07, z=-99, visible=False)
+        self.hand_icon = Entity(parent=camera.ui, model='quad', scale=0.07, z=-99, visible=False, color=color.white)
         self.hand_text = Text(parent=self.hand_icon, text="", origin=(0, 0), color=color.white, scale=10, z=-1)
 
         self.tooltip = Text(parent=camera.ui, text="", origin=(0, 0), scale=1.5, color=color.white, z=-100, visible=False, background=True)
@@ -197,6 +197,69 @@ class Inventory(Entity):
                 return
         self.tooltip.visible = False
 
+    def update_ui(self):
+        for slot in self.slots:
+            if slot.my_index != -1: 
+                item = self.items[slot.my_index]
+                if item:
+                    block_id = item['id']
+                    count = item['count']
+                    # Ambil data dari BLOCK_DATA
+                    data = BLOCK_DATA.get(block_id)
+                    
+                    if data and 'texture' in data:
+                        # SET TEXTURE
+                        slot.item_icon.texture = data['texture']
+                        slot.item_icon.color = color.white # Pastikan warna putih agar tekstur tidak berubah
+                    else:
+                        # Fallback jika data atau tekstur tidak ditemukan
+                        slot.item_icon.color = color.red
+                    
+                    slot.item_icon.visible = True
+                    
+                    if count > 1:
+                        slot.item_count_text.text = str(count)
+                        slot.item_count_text.visible = True
+                        slot.item_count_shadow.text = str(count)
+                        slot.item_count_shadow.visible = True
+                    else:
+                        slot.item_count_text.text = "" 
+                        slot.item_count_text.visible = False
+                        slot.item_count_shadow.text = ""
+                        slot.item_count_shadow.visible = False
+                else:
+                    slot.item_icon.visible = False
+                    slot.item_count_text.text = ""
+                    slot.item_count_text.visible = False
+                    slot.item_count_shadow.text = ""
+                    slot.item_count_shadow.visible = False
+        
+        # Update Hand Item Icon
+        if self.hand_item:
+            block_id = self.hand_item['id']
+            count = self.hand_item['count']
+            data = BLOCK_DATA.get(block_id)
+            
+            if data and 'texture' in data:
+                # SET TEXTURE
+                self.hand_icon.texture = data['texture']
+                self.hand_icon.color = color.white 
+            else:
+                self.hand_icon.color = color.red
+
+            self.hand_icon.visible = True
+            
+            if count > 1:
+                self.hand_text.text = str(count)
+                self.hand_text.visible = True
+            else:
+                self.hand_text.text = ""
+                self.hand_text.visible = False
+        else:
+            self.hand_icon.visible = False
+            self.hand_text.text = ""
+            self.hand_text.visible = False
+
     def on_slot_left_click(self, index):
         clicked_item = self.items[index]
         cursor_item = self.hand_item
@@ -372,57 +435,6 @@ class Inventory(Entity):
             if item['count'] <= 0:
                 self.items[self.selected_index] = None
             self.update_ui()
-
-    def update_ui(self):
-        for slot in self.slots:
-            if slot.my_index != -1: 
-                item = self.items[slot.my_index]
-                if item:
-                    block_id = item['id']
-                    count = item['count']
-                    data = BLOCK_DATA.get(block_id, {'color': color.white})
-                    
-                    slot.item_icon.color = data['color']
-                    slot.item_icon.visible = True
-                    
-                    if count > 1:
-                        slot.item_count_text.text = str(count)
-                        slot.item_count_text.enabled = True
-                        slot.item_count_text.visible = True
-                        slot.item_count_shadow.text = str(count)
-                        slot.item_count_shadow.enabled = True
-                        slot.item_count_shadow.visible = True
-                    else:
-                        slot.item_count_text.text = "" 
-                        slot.item_count_text.enabled = False 
-                        slot.item_count_shadow.text = ""
-                        slot.item_count_shadow.enabled = False
-                else:
-                    slot.item_icon.visible = False
-                    slot.item_count_text.text = ""
-                    slot.item_count_text.enabled = False
-                    slot.item_count_shadow.text = ""
-                    slot.item_count_shadow.enabled = False
-        
-        if self.hand_item:
-            block_id = self.hand_item['id']
-            count = self.hand_item['count']
-            data = BLOCK_DATA.get(block_id, {'color': color.white})
-            self.hand_icon.color = data['color']
-            self.hand_icon.visible = True
-            if count > 1:
-                self.hand_text.text = str(count)
-                self.hand_text.enabled = True
-                self.hand_text.visible = True
-            else:
-                self.hand_text.text = ""
-                self.hand_text.enabled = False
-                self.hand_text.visible = False
-        else:
-            self.hand_icon.visible = False
-            self.hand_text.text = ""
-            self.hand_text.enabled = False
-            self.hand_text.visible = False
 
     def update(self):
         if self.hand_item:
