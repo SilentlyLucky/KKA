@@ -23,7 +23,7 @@ player = None
 mouse_catcher = None
 game_over_ui = None
 pause_ui = None
-menu = None # Inisialisasi variabel menu global
+menu = None
 current_world_name = None
 current_world_type = None
 is_paused = False
@@ -31,6 +31,18 @@ zombie_spawner = None
 
 center_x = int(WIDTH / 2)
 spawn_y = 40
+
+inv_data = None
+saved_spawn_point = None # Default
+
+""" if save_data:
+    spawn_pos = save_data.get('player_pos', (center_x, spawn_y))
+    inv_data = save_data.get('inventory', None)
+    saved_spawn_point = save_data.get('spawn_point', None) # Load spawn point
+else:
+    if center_x < len(game_world.surface_heights):
+        spawn_y = game_world.surface_heights[center_x] + 4
+    spawn_pos = (center_x, spawn_y) """
 
 # --- PAUSE MENU UI ---
 class PauseMenu(Entity):
@@ -123,10 +135,7 @@ def load_saved_game(name):
 
 def launch_game_environment(world_type, save_data=None):
     global game_world, player, mouse_catcher, game_over_ui, pause_ui, is_paused, menu, zombie_spawner
-    
-    # --- PERBAIKAN 1: HAPUS MENU LOADING ---
-    # Kita harus menghancurkan objek menu (yang berisi teks "Generating World...")
-    # sebelum memulai game environment.
+
     if menu:
         try:
             menu.destroy()
@@ -138,31 +147,25 @@ def launch_game_environment(world_type, save_data=None):
     window.color = color.cyan
     is_paused = False
 
-    # 1. World (Generate or Load)
     game_world = World(world_type=world_type, save_data=save_data)
     
-    # Render manual awal
     game_world.update()
  
     if save_data:
         spawn_pos = save_data.get('player_pos', (center_x, 40))
     else:
-        # Cari permukaan aman
         if center_x < len(game_world.surface_heights):
             spawn_y = game_world.surface_heights[center_x] + 4
         spawn_pos = (center_x, spawn_y)
 
-    # 3. UI
     game_over_ui = GameOverOverlay(on_respawn=restart_game, on_exit=back_to_menu)
     pause_ui = PauseMenu(on_resume=resume_game, on_save_exit=save_and_exit_game)
 
-    # 4. Player Entity
     player = Player(
         world_instance=game_world, 
         position=spawn_pos,
         on_death=lambda: game_over_ui.show()
     )
-    # --- SPAWN ZOMBIE ---
     zombie_spawner = ZombieSpawner(game_world, player)
 
     camera.scripts.clear()
@@ -180,7 +183,7 @@ mouse_catcher = Entity(
     model='quad', 
     scale=999, 
     color=color.clear, 
-    z=1000,  # Far behind the world
+    z=1000, 
     collider='box'
 )
 
@@ -194,7 +197,6 @@ def restart_game():
 def back_to_menu():
     global menu
     cleanup_game()
-    # Pastikan menu lama bersih jika ada
     if menu:
         try:
             menu.destroy()
@@ -206,9 +208,7 @@ def back_to_menu():
 def input(key):
     global is_paused
     
-    # Jika game sedang berjalan (player ada) dan menu TIDAK ada
     if player and not menu:
-        # --- PERBAIKAN 2: GANTI TOMBOL KE 'L' ---
         if key == 'l':
             if not is_paused:
                 pause_game()
@@ -218,10 +218,9 @@ def input(key):
 def pause_game():
     global is_paused
     is_paused = True
-    application.pause() # Stop update ursina entities
+    application.pause()
     if pause_ui:
         pause_ui.show()
-    # Mouse harus terlihat saat pause
     mouse.visible = True
     mouse.locked = False
 
@@ -231,7 +230,6 @@ def resume_game():
     if pause_ui:
         pause_ui.hide()
     application.resume()
-    # Kembalikan state mouse
     mouse.visible = True 
     mouse.locked = False
 
@@ -244,7 +242,7 @@ def save_and_exit_game():
         p_data = {"position": (player.x, player.y)}
         save_game(current_world_name, w_data, p_data)
     
-    resume_game() # Unpause dulu sebelum destroy
+    resume_game()
     back_to_menu()
 
 scene = Scene()

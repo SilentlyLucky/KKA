@@ -253,7 +253,6 @@ class Menu:
             if success:
                 self.show_world_options(new_name)
             else:
-                # Jika gagal (misal nama sudah ada), tetap di layar rename tapi print error (bisa ditambah UI error)
                 print("Rename failed")
         else:
             print("Invalid Name")

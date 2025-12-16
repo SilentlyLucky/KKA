@@ -16,9 +16,9 @@ DIRT = 2
 STONE = 3
 BEDROCK = 4
 SAND = 5
-COAL_ORE = 6    # Ubah nama agar jelas ini ORE
-IRON_ORE = 7    # Ubah nama agar jelas ini ORE
-DIAMOND_ORE = 8 # Ubah nama agar jelas ini ORE
+COAL = 6    # Ubah nama agar jelas ini ORE
+IRON = 7    # Ubah nama agar jelas ini ORE
+DIAMOND = 8 # Ubah nama agar jelas ini ORE
 GRASS_PLANT = 9
 LOG = 10     
 LEAVES = 11  
@@ -26,11 +26,6 @@ GLASS = 12
 CRAFTING_TABLE = 13
 PLANK = 14
 BED_BLOCK = 15 # Blok tempat tidur yang sudah ditaruh (Head/Foot bisa kompleks, kita simplifikasi 1 blok dulu atau item saja)
-
-# Alias untuk kompatibilitas kode lama (sementara)
-COAL = COAL_ORE
-IRON = IRON_ORE
-DIAMOND = DIAMOND_ORE
 
 # --- ITEM ID (ITEMS - NON-PLACEABLE / SPECIAL) ---
 STICK = 100
@@ -95,10 +90,35 @@ BLOCK_DATA = {
     TORCH: {'name': 'Torch', 'texture': '../Assets/Icons/Furniture/Torch.png', 'emits_light': True, 'solid': False, 'light_level': 15},
     GRASS_PLANT: {'name': 'Grass Plant', 'texture': '../Assets/Icons/Block/Grass.png', 'double_sided': True, 'solid': True},
     LOG: {'name': 'Oak Log',  'texture': '../Assets/Textures/log.png', 'solid': True},           
-    LEAVES: {'name': 'Oak Leaves', 'texture': '../Assets/Textures/leaves.png', 'double_sided': True, 'solid': True}, # Daun juga double sided
-    CRAFTING_TABLE: {'name': 'Crafting Table'},
-    PLANK: {'name': 'Oak Plank'},
-    BED_BLOCK: {'name': 'Bed'}, # Visual di world
+    LEAVES: {'name': 'Oak Leaves', 'texture': '../Assets/Textures/leaves.png', 'double_sided': True, 'solid': True},
+    CRAFTING_TABLE: {'name': 'Crafting Table', 'texture': '../Assets/Textures/crafting_table.png', 'solid': True},
+    PLANK: {'name': 'Oak Plank', 'texture': '../Assets/Textures/plank.png', 'solid': True},
+    BED_BLOCK: {'name': 'Bed', 'texture': '../Assets/Textures/bed_side.png', 'solid': True}, # Visual di world
+    STICK: {'name': 'Stick', 'texture': '../Assets/Icons/Item/Stick.png', 'solid': False},
+    BED_ITEM: {'name': 'Bed Item', 'texture': '../Assets/Icons/Furniture/Red_Bed.png', 'solid': False}, # Item tempat tidur di tangan
+    RAW_CHICKEN: {'name': 'Raw Chicken', 'texture': '../Assets/Icons/Item/Raw_Chicken.png', 'solid': False},
+    COOKED_CHICKEN: {'name': 'Cooked Chicken', 'texture': '../Assets/Icons/Item/Cooked_Chicken.png', 'solid': False},
+    FEATHER: {'name': 'Feather', 'texture': '../Assets/Icons/Item/Feather.png', 'solid': False},
+    DIAMOND_HELMET: {'name': 'Diamond Helmet', 'texture': '../Assets/Icons/Armor/Diamond_Helmet.png', 'solid': False},
+    DIAMOND_CHESTPLATE: {'name': 'Diamond Chestplate', 'texture': '../Assets/Icons/Armor/Diamond_Chestplate.png', 'solid': False},
+    DIAMOND_LEGGINGS: {'name': 'Diamond Leggings', 'texture': '../Assets/Icons/Armor/Diamond_Leggings.png', 'solid': False},
+    DIAMOND_BOOTS: {'name': 'Diamond Boots', 'texture': '../Assets/Icons/Armor/Diamond_Boots.png', 'solid': False},
+    IRON_HELMET: {'name': 'Iron Helmet', 'texture': '../Assets/Icons/Armor/Iron_Helmet.png', 'solid': False},
+    IRON_CHESTPLATE: {'name': 'Iron Chestplate', 'texture': '../Assets/Icons/Armor/Iron_Chestplate.png', 'solid': False},
+    IRON_LEGGINGS: {'name': 'Iron Leggings', 'texture': '../Assets/Icons/Armor/Iron_Leggings.png', 'solid': False},
+    IRON_BOOTS: {'name': 'Iron Boots', 'texture': '../Assets/Icons/Armor/Iron_Boots.png', 'solid': False},
+    DIAMOND_SWORD: {'name': 'Diamond Sword', 'texture': '../Assets/Icons/Tools/Diamond_Sword.png', 'solid': False},
+    DIAMOND_SHOVEL: {'name': 'Diamond Shovel', 'texture': '../Assets/Icons/Tools/Diamond_Shovel.png', 'solid': False},
+    DIAMOND_PICKAXE: {'name': 'Diamond Pickaxe', 'texture': '../Assets/Icons/Tools/Diamond_Pickaxe.png', 'solid': False},
+    DIAMOND_AXE: {'name': 'Diamond Axe', 'texture': '../Assets/Icons/Tools/Diamond_Axe.png', 'solid': False},
+    IRON_SWORD: {'name': 'Iron Sword', 'texture': '../Assets/Icons/Tools/Iron_Sword.png', 'solid': False},
+    IRON_SHOVEL: {'name': 'Iron Shovel', 'texture': '../Assets/Icons/Tools/Iron_Shovel.png', 'solid': False},
+    IRON_PICKAXE: {'name': 'Iron Pickaxe', 'texture': '../Assets/Icons/Tools/Iron_Pickaxe.png', 'solid': False},
+    IRON_AXE: {'name': 'Iron Axe', 'texture': '../Assets/Icons/Tools/Iron_Axe.png', 'solid': False},
+    STONE_SWORD: {'name': 'Stone Sword', 'texture': '../Assets/Icons/Tools/Stone_Sword.png', 'solid': False},
+    STONE_SHOVEL: {'name': 'Stone Shovel', 'texture': '../Assets/Icons/Tools/Stone_Shovel.png', 'solid': False},
+    STONE_PICKAXE: {'name': 'Stone Pickaxe', 'texture': '../Assets/Icons/Tools/Stone_Pickaxe.png', 'solid': False},
+    STONE_AXE: {'name': 'Stone Axe', 'texture': '../Assets/Icons/Tools/Stone_Axe.png', 'solid': False},
 }
 
 # --- BG ---

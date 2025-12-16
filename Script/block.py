@@ -4,7 +4,6 @@ from config import FG_Z, BLOCK_DATA
 class Block(Entity):
     def __init__(self, position, block_type):
         data = BLOCK_DATA.get(block_type)
-        # self.my_color = data['color'] if data else color.white
         self.block_type = block_type
         self.solid = data.get('solid', True)
         my_texture = data.get('texture')

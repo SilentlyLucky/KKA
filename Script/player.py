@@ -23,13 +23,9 @@ class Player(Entity):
         self.spawn_x = int(self.x)
         self.spawn_y = int(self.y)
         
-        # 1. Setting Fisik (Ramping biar gak nyangkut)
         self.collider = 'box' 
         self.scale = (0.9, 1.8) 
         
-        # 2. Setting Visual (HARUS PAS 1x2)
-        # Kita ingin tampilan akhirnya: Lebar 1.0, Tinggi 2.0
-        # Karena parentnya 0.9 x 1.8, kita bagi target dengan parent.
         target_visual_width = 1.0
         target_visual_height = 2.0
         
@@ -38,7 +34,7 @@ class Player(Entity):
         
         self.visual = Entity(
             parent=self,
-            scale=(calc_scale_x, calc_scale_y), # Skala otomatis
+            scale=(calc_scale_x, calc_scale_y), 
             position=(0, 0, 0),
             color=color.white
         )
@@ -55,7 +51,7 @@ class Player(Entity):
             scale=9999,
             collider='box',
             color=color.clear,
-            z=0,  # Same Z as your blocks
+            z=0, 
             visible=False,
             enabled=True
         )
@@ -72,8 +68,27 @@ class Player(Entity):
         self.damage_flash_timer = 0
         self.max_health = PLAYER_MAX_HEALTH
         self.health = self.max_health
-        self.health_bar_bg = Entity(parent=camera.ui, model='quad', color=color.red.tint(-0.2), scale=(0.5, 0.03), position=(-0.6, 0.45))
-        self.health_bar = Entity(parent=camera.ui, model='quad', color=color.green, scale=(0.5, 0.03), position=(-0.6, 0.45))
+        self.heart_container = Entity(parent=camera.ui, position=(-0.7, 0.45), scale=1)
+        self.hearts = []
+        self.max_hearts = 10  # 10 hearts = 20 health (each heart = 2 HP)
+
+        # Load heart textures
+        self.heart_empty_tex = load_texture('../Assets/Interface/Heart_Empty.png')
+        self.heart_half_tex = load_texture('../Assets/Interface/Heart_Half.png')
+        self.heart_full_tex = load_texture('../Assets/Interface/Heart_Full.png')
+
+        heart_spacing = 0.04  # Spacing between hearts
+        for i in range(self.max_hearts):
+            heart = Entity(
+                parent=self.heart_container,
+                model='quad',
+                texture=self.heart_full_tex,
+                scale=(0.03, 0.03),
+                position=(i * heart_spacing, 0, 0),
+                color=color.white
+            )
+            self.hearts.append(heart)
+
 
     def is_solid_hit(self, hit):
         return (
@@ -151,19 +166,19 @@ class Player(Entity):
 
         # --- ANIMATION LOGIC (Moved to update) ---
         if dx > 0:
-            if self.current_anim_state != 'walk_right': # Check if state is different
+            if self.current_anim_state != 'walk_right':
                 self.player_graphics.play_animation('walk_right')
-                self.current_anim_state = 'walk_right' # Update state
+                self.current_anim_state = 'walk_right' 
             self.visual.scale_x = abs(self.visual.scale_x)
         elif dx < 0:
-            if self.current_anim_state != 'walk_left': # Check if state is different
+            if self.current_anim_state != 'walk_left':
                 self.player_graphics.play_animation('walk_left')
-                self.current_anim_state = 'walk_left' # Update state
+                self.current_anim_state = 'walk_left' 
             self.visual.scale_x = abs(self.visual.scale_x)
         else:
-            if self.current_anim_state != 'idle': # Check if state is different
+            if self.current_anim_state != 'idle':
                 self.player_graphics.play_animation('idle')
-                self.current_anim_state = 'idle' # Update state
+                self.current_anim_state = 'idle' 
 
         # --- 2. VERTICAL ---
         ray_origin_y = 0 
@@ -230,13 +245,10 @@ class Player(Entity):
         if key == 'right mouse down':
             print("=== RIGHT MOUSE CLICKED ===")
             
-            # For orthographic 2D, calculate world position manually
             if mouse.position:
-                # Convert screen space to world space for orthographic camera
                 aspect_ratio = window.aspect_ratio
                 fov = camera.fov
                 
-                # Calculate world position based on camera
                 world_x = camera.x + (mouse.x * fov * aspect_ratio)
                 world_y = camera.y + (mouse.y * fov)
                 
@@ -253,18 +265,15 @@ class Player(Entity):
                 safe_x = (self.scale_x/2) + 0.5 
                 safe_y = (self.scale_y/2) + 0.5
                 
-                # Check 1: Not inside player
                 if not (dx < safe_x and dy < safe_y):
                     print("✓ Not inside player safe zone")
                     
-                    # Check 2: Within reach
                     dist = distance((mx, my, 0), self.position)
                     print(f"Distance to target: {dist}")
                     
                     if dist < 5:
                         print("✓ Within reach")
                         
-                        # Check 3: Position exists in world
                         if (mx, my) not in self.world.block_positions:
                             print("✓ Position is empty - PLACING BLOCK!")
                             self.world.place_block(mx, my, TORCH)
@@ -292,9 +301,24 @@ class Player(Entity):
             self.on_death()
 
     def update_health_ui(self):
-        s = 0.5 * (self.health / self.max_health)
-        self.health_bar.scale_x = max(0, s)
-        self.health_bar.x = self.health_bar_bg.x - (0.5 - self.health_bar.scale_x) / 2
+        """Update Minecraft-style hearts based on current health"""
+        
+        for i in range(self.max_hearts):
+            heart_hp_threshold = (i + 1) * 2 
+            heart_hp_min = i * 2  
+            
+            if self.health >= heart_hp_threshold:
+                # Full heart
+                self.hearts[i].texture = self.heart_full_tex
+                self.hearts[i].enabled = True
+            elif self.health > heart_hp_min:
+                # Half heart
+                self.hearts[i].texture = self.heart_half_tex
+                self.hearts[i].enabled = True
+            else:
+                # Empty heart
+                self.hearts[i].texture = self.heart_empty_tex
+                self.hearts[i].enabled = True
 
     def take_damage(self, amount):
         self.health -= amount
@@ -305,3 +329,5 @@ class Player(Entity):
     def respawn(self):
         self.position = (int(WIDTH/2), self.world.surface_heights[int(WIDTH/2)] + 4)
         self.y_velocity = 0
+
+

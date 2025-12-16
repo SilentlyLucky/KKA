@@ -23,7 +23,7 @@ player = None
 mouse_catcher = None
 game_over_ui = None
 pause_ui = None
-menu = None # Inisialisasi variabel menu global
+menu = None 
 current_world_name = None
 current_world_type = None
 is_paused = False
@@ -118,15 +118,11 @@ def load_saved_game(name):
         launch_game_environment(world_type=data['world_type'], save_data=data)
     else:
         print("Error loading game")
-        # Jika load gagal, kembali ke menu (menu harus dibuat ulang karena sudah didestroy saat loading)
         back_to_menu()
 
 def launch_game_environment(world_type, save_data=None):
     global game_world, player, mouse_catcher, game_over_ui, pause_ui, is_paused, menu, zombie_spawner
     
-    # --- PERBAIKAN 1: HAPUS MENU LOADING ---
-    # Kita harus menghancurkan objek menu (yang berisi teks "Generating World...")
-    # sebelum memulai game environment.
     if menu:
         try:
             menu.destroy()
@@ -138,25 +134,19 @@ def launch_game_environment(world_type, save_data=None):
     window.color = color.cyan
     is_paused = False
 
-    # 1. World (Generate or Load)
     game_world = World(world_type=world_type, save_data=save_data)
-    
-    # Render manual awal
     game_world.update()
  
     if save_data:
         spawn_pos = save_data.get('player_pos', (center_x, 40))
     else:
-        # Cari permukaan aman
         if center_x < len(game_world.surface_heights):
             spawn_y = game_world.surface_heights[center_x] + 4
         spawn_pos = (center_x, spawn_y)
 
-    # 3. UI
     game_over_ui = GameOverOverlay(on_respawn=restart_game, on_exit=back_to_menu)
     pause_ui = PauseMenu(on_resume=resume_game, on_save_exit=save_and_exit_game)
 
-    # 4. Player Entity
     player = Player(
         world_instance=game_world, 
         position=spawn_pos,

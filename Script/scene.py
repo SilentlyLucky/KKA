@@ -79,14 +79,12 @@ class Scene(Entity):
             z=z_depth,
             position=(start_x, position_y),
             speed=speed,
-            start_x=start_x, # Crucial: Store the layer's initial center position
+            start_x=start_x,
             scale=scale
         )
         
-        # Add the initial tile to the master list
         self.parallax_layers.append(initial_layer)
 
-        # Duplicate the tiles (e.g., 3 tiles total: 0, 1, 2)
         for m in range(1, 7): 
             new_tile = duplicate(initial_layer, x=start_x + m * self.tile_width)
             new_tile.start_x = start_x + m * self.tile_width 

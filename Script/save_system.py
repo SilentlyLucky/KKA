@@ -2,7 +2,6 @@ import pickle
 import os
 from config import WIDTH, DEPTH
 
-# Folder untuk menyimpan save file
 SAVE_FOLDER = "Saves"
 
 if not os.path.exists(SAVE_FOLDER):
