@@ -29,10 +29,9 @@ class Player(Entity):
         
         self.visual = Entity(
             parent=self,
-            model='quad',
-            color=color.azure,
-            scale=(calc_scale_x, calc_scale_y), # Skala otomatis
-            position=(0, 0, 0)
+            scale=(calc_scale_x, calc_scale_y),
+            position=(0, 0, 0),
+            color=color.white   # ← ini penting untuk lighting
         )
         
         # Cursor
@@ -58,9 +57,28 @@ class Player(Entity):
             hasattr(hit.entity, 'solid') and
             hit.entity.solid
         )
+    
+    def get_env_light(self):
+        x = int(round(self.x))
+        y = int(self.y - self.scale_y / 2)
+
+        if 0 <= x < WIDTH and 0 <= y < DEPTH:
+            return self.world.light_map[x][y]
+        return 15
+
+    def apply_environment_light(self):
+        lvl = self.get_env_light()
+        lvl = max(0, min(15, lvl))
+
+        brightness = 0.15 + 0.85 * (lvl / 15.0)
+        self.visual.color = color.white * brightness
+
 
     def update(self):
         dt = time.dt
+        self.get_env_light()
+        self.apply_environment_light()
+        self.update_health_ui()
         self.update_health_ui()
         if self.y < -20: self.take_damage(20); self.respawn()
 
@@ -125,6 +143,16 @@ class Player(Entity):
 
         self.y += self.y_velocity * dt
         self.z = FG_Z 
+
+    def skin(self):
+        self.player_graphics = SpriteSheetAnimation('../Assets/Sprite/MC.png', parent=self.visual, tileset_size=(8,1), fps=6, animations={
+            'idle' : ((0,0), (0,0)),        # makes an animation from (0,0) to (0,0), a single frame
+            'walk_right' : ((1,0), (3,0)),
+            'walk_left' : ((4,0), (7,0)),
+            }
+            )
+        self.player_graphics.play_animation('idle')
+        self.current_anim_state = 'idle'
 
     def input(self, key):
         if key == 'space':

@@ -8,7 +8,7 @@ class ZombieSpawner:
         self.world = world
         self.player = player
         self.timer = 0
-        self.spawn_interval = 3.0
+        self.spawn_interval = 15.0
         self.min_light = 4
         self.spawn_radius = 10
         self.max_attempts = 30
