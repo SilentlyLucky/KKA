@@ -1,113 +1,77 @@
 from ursina import *
 from config import *
-from ursina import Sprite
-from ursina import camera as Camera
-from ursina import time as Time
-from config import WIDTH
-from world import World
+from block import Block
+import math
+import random
 
-class Scene(Entity):
+class World(Entity):
     def __init__(self):
         super().__init__()
-        center = WIDTH / 2
-
-        self.tile_width = 30 
-        self.parallax_multiplier = -0.05 
-        self.parallax_layers = []
-        self.sky = Entity(
-            parent=self,
-            model='quad',
-            texture='../Assets/Background/Layers/sky.png',
-            scale=(100, 50),
-            z=100,
-            position=(center, 20)
-        )
-        self.add_parallax_layer(
-            texture='../Assets/Background/Layers/clouds_bg.png',
-            z_depth=90,
-            speed = 1,
-            position_y=20,
-            start_x=0,
-            scale=(self.tile_width, 40)
-        )
-        self.add_parallax_layer(
-            texture='../Assets/Background/Layers/glacial_mountains_lightened.png',
-            z_depth=80,
-            speed = 3,
-            position_y=25,
-            start_x=0,
-            scale=(self.tile_width, 30)
-        )
-        self.add_parallax_layer(
-            texture='../Assets/Background/Layers/cloud_lonely.png',
-            z_depth=70,
-            speed = 5,
-            position_y=20,
-            start_x=0,
-            scale=(self.tile_width, 30)
-        )
-        self.add_parallax_layer(
-            texture='../Assets/Background/Layers/clouds_mg_3.png',
-            z_depth=70,
-            speed = 4,
-            position_y=25,
-            start_x=0,
-            scale=(self.tile_width, 50)
-        )
-        self.add_parallax_layer(
-            texture='../Assets/Background/Layers/clouds_mg_2.png',
-            z_depth=60,
-            speed = 5,
-            position_y=25,
-            start_x=0,
-            scale=(self.tile_width, 50)
-        )
-        self.add_parallax_layer(
-            texture='../Assets/Background/Layers/clouds_mg_1_lightened.png',
-            z_depth=50,
-            speed = 7,
-            position_y=25,
-            start_x=0,
-            scale=(self.tile_width, 50)
-        )
+        self.blocks = [] 
+        self.block_positions = set()
+        self.map_data = [[0 for y in range(DEPTH)] for x in range(WIDTH)]
+        self.surface_heights = []
         
-    def add_parallax_layer(self, texture, z_depth, speed, position_y, start_x, scale):
-        initial_layer = Entity(
-            parent=self,
-            model='quad',
-            texture=texture,
-            z=z_depth,
-            position=(start_x, position_y),
-            speed=speed,
-            start_x=start_x, # Crucial: Store the layer's initial center position
-            scale=scale
-        )
-        
-        # Add the initial tile to the master list
-        self.parallax_layers.append(initial_layer)
+        self.bg_parent = Entity(parent=self, name='Background_Layer')
+        self.fg_parent = Entity(parent=self, name='Foreground_Layer')
 
-        # Duplicate the tiles (e.g., 3 tiles total: 0, 1, 2)
-        for m in range(1, 4): 
-            new_tile = duplicate(initial_layer, x=start_x + m * self.tile_width)
-            new_tile.start_x = start_x + m * self.tile_width 
+        self.generate_data()
+        self.render_world()
 
-            new_tile.start_x = new_tile.x 
-            new_tile.speed = speed
+    def generate_data(self):
+        for x in range(WIDTH):
+            h = BASE_HEIGHT + int(math.sin(x / 5) * 4 + math.cos(x / 3) * 2)
+            self.surface_heights.append(h)
+            for y in range(DEPTH):
+                if y < h:
+                    self.map_data[x][y] = 1
 
-            self.parallax_layers.append(new_tile)
+        random.seed(42)
+        for x in range(WIDTH):
+            for y in range(DEPTH):
+                stone_level = self.surface_heights[x] - DIRT_LAYER_THICKNESS
+                if y < stone_level:
+                    cave_value = math.sin(x * 0.3) * math.cos(y * 0.2) + math.sin(x * 0.1) * math.cos(y * 0.4)
+                    if cave_value > 0.3:
+                        self.map_data[x][y] = 0
 
-    def update(self):
-        camera_x = camera.world_position.x 
-        loop_distance = self.tile_width * 4 
-
-        for tile in self.parallax_layers:
-            # --- 1. Parallax Movement ---
-            tile_movement = camera_x * tile.speed * self.parallax_multiplier
-            tile.x = tile.start_x + tile_movement
+    def render_world(self):
+        print("Rendering World...")
+        for x in range(WIDTH):
+            h = self.surface_heights[x]
+            dirt_start_y = h - DIRT_LAYER_THICKNESS
             
-            # --- 2. Looping/Wrapping Logic ---
-            if tile.x < camera_x - loop_distance:
-                tile.x += loop_distance
-            
-            elif tile.x > camera_x + loop_distance:
-                tile.x -= loop_distance
+            for y in range(DEPTH):
+                if y < h:
+                    bg_col = BG_DIRT_COLOR if y >= dirt_start_y else BG_STONE_COLOR
+                    Entity(
+                        parent=self.bg_parent,
+                        model='quad',
+                        color=bg_col,
+                        position=(x, y, BG_Z),
+                        scale=(1, 1)
+                    )
+
+                if self.map_data[x][y] == 1:
+                    if y == h - 1:
+                        tipe = GRASS
+                    elif y >= dirt_start_y:
+                        tipe = DIRT
+                    else:
+                        tipe = STONE
+                    self.place_block(x, y, tipe)
+
+    def place_block(self, x, y, block_type):
+        b = Block(position=(x, y), block_type=block_type)
+        b.parent = self.fg_parent
+        self.blocks.append(b)
+        self.block_positions.add((x, y))
+        return b
+
+    def remove_block(self, entity):
+        if entity in self.blocks:
+            self.blocks.remove(entity)
+            pos = (int(entity.x), int(entity.y))
+            if pos in self.block_positions:
+                self.block_positions.remove(pos)
+            destroy(entity)
