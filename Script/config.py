@@ -14,12 +14,20 @@ BEDROCK = 4
 TORCH = 9
 
 # --- DATABASE BLOCK ---
+# BLOCK_DATA = {
+#     GRASS: {'color': color.green, 'solid': True, 'name': 'Grass'},
+#     DIRT:  {'color': color.orange.tint(-0.3), 'solid': True, 'name': 'Dirt'},
+#     STONE: {'color': color.gray, 'solid': True, 'name': 'Stone'},
+#     BEDROCK: {'color': color.black, 'name': 'Bedrock', 'solid': True},
+#     TORCH: {'color': color.pink, 'name': 'Torch', 'emits_light': True, 'solid': False, 'light_level': 15},
+# }
+
 BLOCK_DATA = {
-    GRASS: {'color': color.green, 'solid': True, 'name': 'Grass'},
-    DIRT:  {'color': color.orange.tint(-0.3), 'solid': True, 'name': 'Dirt'},
-    STONE: {'color': color.gray, 'solid': True, 'name': 'Stone'},
-    BEDROCK: {'color': color.black, 'name': 'Bedrock', 'solid': True},
-    TORCH: {'color': color.pink, 'name': 'Torch', 'emits_light': True, 'solid': False, 'light_level': 15},
+    GRASS: {'solid': True, 'name': 'Grass', 'texture': '../Assets/Textures/Grass.png'},
+    DIRT:  {'solid': True, 'name': 'Dirt', 'texture': '../Assets/Textures/Dirt.png'},
+    STONE: {'solid': True, 'name': 'Stone', 'texture': '../Assets/Textures/Stone.png'},
+    BEDROCK: {'name': 'Bedrock', 'solid': True, 'texture': '../Assets/Textures/Bedrock.png'},
+    TORCH: {'name': 'Torch', 'emits_light': True, 'solid': False, 'light_level': 15, 'texture': '../Assets/Icons/Furniture/Torch.png'},
 }
 
 # --- BG ---

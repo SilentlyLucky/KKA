@@ -42,6 +42,14 @@ class World(Entity):
                     if cave_value > 0.3:
                         self.map_data[x][y] = 0
 
+    def is_standable(self, x, y):
+        return (
+            self.map_data[x][y] == 0 and
+            self.map_data[x][y+1] == 0 and
+            self.map_data[x][y-1] == 1
+        )
+
+
     def render_world(self):
         print("Rendering World...")
         for x in range(WIDTH):

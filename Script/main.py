@@ -3,6 +3,7 @@ from world import World
 from player import Player
 from mob import Zombie  # <--- IMPORT ZOMBIE
 from config import WIDTH
+from zombie_spawner import ZombieSpawner
 
 # --- Setup App ---
 app = Ursina()
@@ -25,13 +26,18 @@ player = Player(
     position=(center_x, spawn_y)
 )
 
+zombie_spawner = ZombieSpawner(game_world, player)
+
+def update():
+    zombie_spawner.update()
+
 # --- SPAWN ZOMBIE ---
 # We spawn him slightly to the right of the player
-zombie = Zombie(
-    world=game_world, 
-    player=player, 
-    position=(center_x + 5, spawn_y + 5)
-)
+# zombie = Zombie(
+#     world=game_world, 
+#     player=player, 
+#     position=(center_x + 5, spawn_y + 5)
+# )
 
 # --- Camera Follow ---
 camera.add_script(SmoothFollow(target=player, offset=[0, 1, -30], speed=5))
