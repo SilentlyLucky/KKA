@@ -111,6 +111,21 @@ class Player(Entity):
             if not hit_wall:
                 self.x += move_amount
 
+        if dx > 0:
+            if self.current_anim_state != 'walk_right': # Check if state is different
+                self.player_graphics.play_animation('walk_right')
+                self.current_anim_state = 'walk_right' # Update state
+            self.visual.scale_x = abs(self.visual.scale_x)
+        elif dx < 0:
+            if self.current_anim_state != 'walk_left': # Check if state is different
+                self.player_graphics.play_animation('walk_left')
+                self.current_anim_state = 'walk_left' # Update state
+            self.visual.scale_x = abs(self.visual.scale_x)
+        else:
+            if self.current_anim_state != 'idle': # Check if state is different
+                self.player_graphics.play_animation('idle')
+                self.current_anim_state = 'idle' # Update state
+
         # --- 2. VERTICAL ---
         ray_origin_y = 0 
         ray_direction = Vec3(0, -1, 0)
