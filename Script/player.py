@@ -50,6 +50,16 @@ class Player(Entity):
         # Cursor
         self.cursor = Entity(parent=camera, model='quad', color=color.red, scale=.05, rotation_z=45, z=-1)
 
+        self.mouse_plane = Entity(
+            model='plane',
+            scale=9999,
+            collider='box',
+            color=color.clear,
+            z=0,  # Same Z as your blocks
+            visible=False,
+            enabled=True
+        )
+
         # Physics Stats
         self.walk_speed = 5
         self.jump_force = 12
@@ -218,16 +228,54 @@ class Player(Entity):
                 if distance(self.position, mouse.hovered_entity.position) < 5:
                     self.world.remove_block(mouse.hovered_entity)
         if key == 'right mouse down':
-            if mouse.world_point:
-                mx, my = round(mouse.world_point.x), round(mouse.world_point.y)
+            print("=== RIGHT MOUSE CLICKED ===")
+            
+            # For orthographic 2D, calculate world position manually
+            if mouse.position:
+                # Convert screen space to world space for orthographic camera
+                aspect_ratio = window.aspect_ratio
+                fov = camera.fov
+                
+                # Calculate world position based on camera
+                world_x = camera.x + (mouse.x * fov * aspect_ratio)
+                world_y = camera.y + (mouse.y * fov)
+                
+                mx, my = round(world_x), round(world_y)
+                
+                print(f"Mouse screen pos: {mouse.position}")
+                print(f"Calculated world pos: ({world_x}, {world_y})")
+                print(f"Rounded target: ({mx}, {my})")
+                print(f"Player position: ({self.x}, {self.y})")
+                
                 dx = abs(mx - self.x)
                 dy = abs(my - self.y)
+                
                 safe_x = (self.scale_x/2) + 0.5 
-                safe_y = (self.scale_y/2) + 0.5 
+                safe_y = (self.scale_y/2) + 0.5
+                
+                # Check 1: Not inside player
                 if not (dx < safe_x and dy < safe_y):
-                    if (mx, my) not in self.world.block_positions:
-                        if distance((mx, my, 0), self.position) < 5:
+                    print("✓ Not inside player safe zone")
+                    
+                    # Check 2: Within reach
+                    dist = distance((mx, my, 0), self.position)
+                    print(f"Distance to target: {dist}")
+                    
+                    if dist < 5:
+                        print("✓ Within reach")
+                        
+                        # Check 3: Position exists in world
+                        if (mx, my) not in self.world.block_positions:
+                            print("✓ Position is empty - PLACING BLOCK!")
                             self.world.place_block(mx, my, TORCH)
+                        else:
+                            print("✗ Position already occupied")
+                    else:
+                        print("✗ Too far away")
+                else:
+                    print("✗ Too close to player")
+            else:
+                print("✗ No mouse position")
                             
     def on_destroy(self):
         if hasattr(self, 'cursor_highlight') and self.cursor_highlight:
