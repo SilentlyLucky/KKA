@@ -24,8 +24,8 @@ class Player(Entity):
         target_visual_width = 1.0
         target_visual_height = 2.0
         
-        calc_scale_x = target_visual_width / self.scale_x  # 1.0 / 0.9 = 1.111...
-        calc_scale_y = target_visual_height / self.scale_y # 2.0 / 1.8 = 1.111...
+        calc_scale_x = (target_visual_width / self.scale_x)# 1.0 / 0.9 = 1.111...
+        calc_scale_y = (target_visual_height / self.scale_y)# 2.0 / 1.8 = 1.111...
         
         self.visual = Entity(
             parent=self,
@@ -136,7 +136,7 @@ class Player(Entity):
         self.z = FG_Z 
 
     def skin(self):
-        self.player_graphics = SpriteSheetAnimation('../Assets/Sprite/MC.png', parent=self.visual, tileset_size=(8,1), fps=6, animations={
+        self.player_graphics = SpriteSheetAnimation('../Assets/Sprite/MC.png', parent=self.visual, tileset_size=(8,1), fps=8, animations={
             'idle' : ((0,0), (0,0)),        # makes an animation from (0,0) to (0,0), a single frame
             'walk_right' : ((1,0), (3,0)),
             'walk_left' : ((4,0), (7,0)),
