@@ -12,14 +12,18 @@ class World(Entity):
         self.block_positions = set()
         self.map_data = [[0 for y in range(DEPTH)] for x in range(WIDTH)]
         self.surface_heights = []
+        self.solid_map = [[False for _ in range(DEPTH)] for _ in range(WIDTH)]
         self.light_map = [[0 for y in range(DEPTH)] for x in range(WIDTH)]
         
         self.bg_parent = Entity(parent=self, name='Background_Layer')
         self.fg_parent = Entity(parent=self, name='Foreground_Layer')
 
+        self.generating = True
         self.generate_data()
-        self.compute_light()
         self.render_world()
+        self.generating = False
+        self.compute_light()
+        self.apply_light_to_blocks()
 
     def generate_data(self):
         for x in range(WIDTH):
@@ -70,8 +74,11 @@ class World(Entity):
         b.parent = self.fg_parent
         self.blocks.append(b)
         self.block_positions.add((x, y))
-        self.compute_light()
-        self.apply_light_to_blocks()
+        self.solid_map[x][y] = b.solid
+
+        if not self.generating:
+            self.compute_light()
+            self.apply_light_to_blocks()
         return b
 
     def remove_block(self, entity):
@@ -79,6 +86,7 @@ class World(Entity):
             self.blocks.remove(entity)
             pos = (int(entity.x), int(entity.y))
             self.map_data[pos[0]][pos[1]] = 0
+            self.solid_map[pos[0]][pos[1]] = False
             if pos in self.block_positions:
                 self.block_positions.remove(pos)
             destroy(entity)
@@ -100,6 +108,12 @@ class World(Entity):
                     self.light_map[x][y] = 15
                     q.append((x, y, 15))
 
+        for b in self.blocks:
+            if b.emits_light:
+                x, y = int(b.x), int(b.y)
+                self.light_map[x][y] = b.light_strength
+                q.append((x, y, b.light_strength))
+                
         dirs = [(1,0),(-1,0),(0,1),(0,-1)]
         while q:
             x, y, level = q.popleft()
@@ -109,9 +123,10 @@ class World(Entity):
             for dx, dy in dirs:
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < WIDTH and 0 <= ny < DEPTH:
-                    if self.map_data[nx][ny] == 0 and self.light_map[nx][ny] < nl:
+                    if not self.is_light_blocking(nx, ny) and self.light_map[nx][ny] < nl:
                         self.light_map[nx][ny] = nl
                         q.append((nx, ny, nl))
+
 
     def apply_light_to_blocks(self):
         for b in self.blocks:
@@ -127,3 +142,6 @@ class World(Entity):
             if 0 <= nx < WIDTH and 0 <= ny < DEPTH and self.map_data[nx][ny] == 0:
                 best = max(best, self.light_map[nx][ny])
         return best
+    
+    def is_light_blocking(self, x, y):
+        return self.solid_map[x][y]
