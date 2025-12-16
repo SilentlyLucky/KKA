@@ -4,15 +4,24 @@ from block import Block
 import time
 
 class Player(Entity):
-    def __init__(self, world_instance, **kwargs):
+    def __init__(self, world_instance, on_death=None, **kwargs):
         # --- INDUK (FISIK) ---
+        if 'position' not in kwargs:
+            kwargs['position'] = (WIDTH/2, 20)
+
         super().__init__(
             parent=scene,
             color=color.clear,
             origin_y=0, 
+            traverse_target=world_instance.fg_parent,
             **kwargs
         )
         self.world = world_instance
+        self.on_death = on_death or (lambda: None)
+        self.dead = False
+
+        self.spawn_x = int(self.x)
+        self.spawn_y = int(self.y)
         
         # 1. Setting Fisik (Ramping biar gak nyangkut)
         self.collider = 'box' 
@@ -36,8 +45,16 @@ class Player(Entity):
         self.skin()
 
         # Cursor
-        self.cursor = Entity(parent=camera, model='quad', color=color.red, scale=.05, rotation_z=45, z=-1)
-
+        """ self.cursor = Entity(parent=camera, model='quad', color=color.red, scale=.05, rotation_z=45, z=-1) """
+        self.cursor_highlight = Entity(
+        parent=scene, 
+        model='quad', 
+        color=color.rgba(255, 0, 0, 100),
+        scale=(1.1, 1.1), 
+        z=FG_Z - 0.2, 
+        enabled=False,
+        double_sided=True
+        )
         # Physics Stats
         self.walk_speed = 5
         self.jump_force = 12
@@ -53,6 +70,23 @@ class Player(Entity):
         self.health_bar = Entity(parent=camera.ui, model='quad', color=color.green, scale=(0.5, 0.03), position=(-0.6, 0.45))
 
     def update(self):
+        
+        self.z = FG_Z 
+        
+        if mouse.world_point:
+            mx = round(mouse.world_point.x)
+            my = round(mouse.world_point.y)
+            
+            if hasattr(self, 'cursor_highlight') and self.cursor_highlight:
+                self.cursor_highlight.position = (mx, my)
+                self.cursor_highlight.enabled = True
+        else:
+            if hasattr(self, 'cursor_highlight') and self.cursor_highlight:
+                self.cursor_highlight.enabled = False
+
+        if self.y < -5 and not self.dead:
+            self.die()
+        
         dt = time.dt
         self.update_health_ui()
         if self.y < -20: self.take_damage(20); self.respawn()
@@ -146,6 +180,8 @@ class Player(Entity):
         self.current_anim_state = 'idle'
 
     def input(self, key):
+        if self.dead: return
+
         if key == 'space':
             if self.is_grounded:
                 self.y_velocity = self.jump_force
@@ -153,7 +189,9 @@ class Player(Entity):
                 self.is_grounded = False
 
         if key == 'left mouse down':
-             if mouse.hovered_entity and isinstance(mouse.hovered_entity, Block): self.world.remove_block(mouse.hovered_entity)
+             if mouse.hovered_entity and isinstance(mouse.hovered_entity, Block): 
+                if distance(self.position, mouse.hovered_entity.position) < 5:
+                    self.world.remove_block(mouse.hovered_entity)
         if key == 'right mouse down':
             if mouse.world_point:
                 mx, my = round(mouse.world_point.x), round(mouse.world_point.y)
@@ -165,6 +203,19 @@ class Player(Entity):
                     if (mx, my) not in self.world.block_positions:
                         if distance((mx, my, 0), self.position) < 5:
                             self.world.place_block(mx, my, DIRT)
+    def on_destroy(self):
+        if hasattr(self, 'cursor_highlight') and self.cursor_highlight:
+            destroy(self.cursor_highlight)
+
+    def respawn(self):
+        self.position = (self.spawn_x, self.spawn_y)
+        self.velocity = (0,0)
+        self.dead = False
+
+    def die(self):
+        if not self.dead:
+            self.dead = True
+            self.on_death()
 
     def update_health_ui(self):
         s = 0.5 * (self.health / self.max_health)
