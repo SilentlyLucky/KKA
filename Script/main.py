@@ -3,7 +3,7 @@ from world import World
 from player import Player
 from mob import Zombie  # <--- IMPORT ZOMBIE
 from config import WIDTH
-from zombie_spawner import ZombieSpawner
+from mob import ZombieSpawner
 from scene import Scene
 
 # --- Setup App ---

@@ -147,9 +147,9 @@ class World(Entity):
         best = 0
         for dx, dy in [(1,0),(-1,0),(0,1),(0,-1)]:
             nx, ny = x + dx, y + dy
-            if 0 <= nx < WIDTH and 0 <= ny < DEPTH and self.map_data[nx][ny] == 0:
+            if 0 <= nx < WIDTH and 0 <= ny < DEPTH:
                 best = max(best, self.light_map[nx][ny])
-        return best
+        return max(0, best - 1)
     
     def is_light_blocking(self, x, y):
         return self.solid_map[x][y]

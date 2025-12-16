@@ -67,13 +67,13 @@ class Player(Entity):
 
         if 0 <= x < WIDTH and 0 <= y < DEPTH:
             return self.world.light_map[x][y]
-        return 15
+        return 14
 
     def apply_environment_light(self):
         lvl = self.get_env_light()
-        lvl = max(0, min(15, lvl))
+        lvl = max(0, min(14, lvl))
 
-        brightness = 0.15 + 0.85 * (lvl / 15.0)
+        brightness = 0.15 + 0.85 * (lvl / 14.0)
         base_color = color.white * brightness
 
         if self.damage_flash_timer > 0:
