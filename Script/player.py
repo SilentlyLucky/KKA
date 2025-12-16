@@ -189,20 +189,19 @@ class Player(Entity):
                 self.is_grounded = False
 
         if key == 'left mouse down':
-             if mouse.hovered_entity and isinstance(mouse.hovered_entity, Block): 
+            if mouse.hovered_entity and isinstance(mouse.hovered_entity, Block): 
                 if distance(self.position, mouse.hovered_entity.position) < 5:
                     self.world.remove_block(mouse.hovered_entity)
         if key == 'right mouse down':
             if mouse.world_point:
-                mx, my = round(mouse.world_point.x), round(mouse.world_point.y)
-                dx = abs(mx - self.x)
-                dy = abs(my - self.y)
-                safe_x = (self.scale_x/2) + 0.5 
-                safe_y = (self.scale_y/2) + 0.5 
-                if not (dx < safe_x and dy < safe_y):
+                mx = round(mouse.world_point.x)
+                my = round(mouse.world_point.y)
+                dist_to_mouse = distance(Vec3(mx, my, 0), self.position)
+                
+                if dist_to_mouse < 4 and dist_to_mouse > 0.8:
                     if (mx, my) not in self.world.block_positions:
-                        if distance((mx, my, 0), self.position) < 5:
-                            self.world.place_block(mx, my, DIRT)
+                        self.world.place_block(mx, my, DIRT)
+                            
     def on_destroy(self):
         if hasattr(self, 'cursor_highlight') and self.cursor_highlight:
             destroy(self.cursor_highlight)

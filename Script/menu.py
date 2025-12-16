@@ -27,7 +27,7 @@ class Menu:
         self.clear_menu()
         
         title = Text(
-            text="MINERIA", origin=(0, 0), scale=3, y=0.3,
+            text="MINERIA", origin=(40, 40), scale=3, y=0.3,
             color=color.white, outline=(0.3, color.black)
         )
         self.entities.append(title)
@@ -58,7 +58,7 @@ class Menu:
         self.clear_menu()
         
         title = Text(
-            text="NAME YOUR WORLD", origin=(0, 0), scale=2, y=0.3,
+            text="NAME YOUR WORLD", origin=(40, 40), scale=2, y=0.3,
             color=color.white, outline=(0.3, color.black)
         )
         self.entities.append(title)
@@ -119,7 +119,7 @@ class Menu:
         self.clear_menu()
         
         title = Text(
-            text="SELECT WORLD", origin=(0, 0), scale=2, y=0.35,
+            text="SELECT WORLD", origin=(40, 40), scale=2, y=0.35,
             color=color.white, outline=(0.3, color.black)
         )
         self.entities.append(title)
@@ -154,7 +154,7 @@ class Menu:
         self.clear_menu()
         
         title = Text(
-            text=f"WORLD: {world_name}", origin=(0, 0), scale=2, y=0.3,
+            text=f"WORLD: {world_name}", origin=(40, 40), scale=2, y=0.3,
             color=color.white, outline=(0.3, color.black)
         )
         self.entities.append(title)
@@ -188,7 +188,7 @@ class Menu:
         self.clear_menu()
         
         title = Text(
-            text=f"EDIT: {world_name}", origin=(0, 0), scale=2, y=0.3,
+            text=f"EDIT: {world_name}", origin=(40, 40), scale=2, y=0.3,
             color=color.white, outline=(0.3, color.black)
         )
         self.entities.append(title)
@@ -222,7 +222,7 @@ class Menu:
         self.clear_menu()
         
         title = Text(
-            text=f"RENAME: {old_name}", origin=(0, 0), scale=2, y=0.3,
+            text=f"RENAME: {old_name}", origin=(40, 40), scale=2, y=0.3,
             color=color.white, outline=(0.3, color.black)
         )
         self.entities.append(title)
@@ -263,13 +263,13 @@ class Menu:
         self.clear_menu()
         
         title = Text(
-            text=f"DELETE {world_name}?", origin=(0, 0), scale=2, y=0.3,
+            text=f"DELETE {world_name}?", origin=(40, 40), scale=2, y=0.3,
             color=color.red, outline=(0.3, color.black)
         )
         self.entities.append(title)
         
         warn = Text(
-            text="This cannot be undone!", origin=(0, 0), scale=1.5, y=0.2,
+            text="This cannot be undone!", origin=(40, 40), scale=1.5, y=0.2,
             color=color.orange
         )
         self.entities.append(warn)
@@ -297,13 +297,13 @@ class Menu:
     # --- LAUNCHERS ---
     def trigger_start_new(self, name, w_type):
         self.clear_menu()
-        loading = Text(text="Generating World...", origin=(0,0), scale=2)
+        loading = Text(text="Generating World...", origin=(40, 40), scale=2)
         self.entities.append(loading)
         invoke(self.on_start_new, name, w_type, delay=0.1)
 
     def trigger_load(self, name):
         self.clear_menu()
-        loading = Text(text="Loading World...", origin=(0,0), scale=2)
+        loading = Text(text="Loading World...", origin=(40, 40), scale=2)
         self.entities.append(loading)
         invoke(self.on_load, name, delay=0.1)
 

@@ -4,11 +4,14 @@ import heapq
 from collections import deque
 import random
 import time
+from config import WIDTH, DEPTH
 
 class Zombie(Entity):
     def __init__(self, world, player, **kwargs):
         super().__init__(
             parent=scene,
+            model='quad',
+            color=color.clear, # Fisik transparan
             origin_y=0,        # Pivot di tengah badan
             position=kwargs.get('position', (0,0)),
             z=FG_Z
@@ -70,7 +73,7 @@ class Zombie(Entity):
         self.skin()
 
     def skin(self):
-        self.zombie_graphics = SpriteSheetAnimation('../Assets/Sprite/Zombie.png', parent=self.visual, tileset_size=(8,1), fps=8, animations={
+        self.zombie_graphics = SpriteSheetAnimation('../Assets/Sprite/Zombie.png', parent=self.visual, tileset_size=(8,1), fps=6, animations={
             'idle' : ((0,0), (0,0)),        # makes an animation from (0,0) to (0,0), a single frame
             'walk_right' : ((1,0), (3,0)),
             'walk_left' : ((4,0), (7,0)),
@@ -79,9 +82,28 @@ class Zombie(Entity):
         self.zombie_graphics.play_animation('idle')
         self.current_anim_state = 'idle'
 
+    def get_light_level(self):
+        x = int(round(self.x))
+        y = int(round(self.y))
+
+        if 0 <= x < WIDTH and 0 <= y < DEPTH:
+            if self.world.map_data[x][y] == 0:
+                return self.world.light_map[x][y]
+            else:
+                return self.world._light_for_solid(x, y)
+        return 0
+    
+    def apply_lighting(self):
+            lvl = self.get_light_level()
+            lvl = max(0, min(14, lvl))
+            brightness = 0.1 + 0.9 * (lvl / 14.0) 
+            if hasattr(self, 'zombie_graphics'):
+                self.zombie_graphics.color = color.white * brightness
+
     def update(self):
         try:
             dt = time.dt
+            self.apply_lighting()
             
             # ----------------------------------
             # 1. LOGIKA UTAMA
@@ -386,3 +408,52 @@ class Zombie(Entity):
             for n in self.get_neighbors(curr):
                 if n not in v: v.add(n); q.append((n, p+[n]))
         return []
+    
+class ZombieSpawner:
+    def __init__(self, world, player):
+        self.world = world
+        self.player = player
+        self.timer = 0
+        self.spawn_interval = 3.0
+        self.min_light = 4
+        self.spawn_radius = 10
+        self.max_attempts = 30
+
+    def update(self):
+        self.timer += time.dt
+        if self.timer >= self.spawn_interval:
+            self.timer = 0
+            self.try_spawn()
+
+    def try_spawn(self):
+        px, py = int(self.player.x), int(self.player.y)
+
+        for _ in range(self.max_attempts):
+            dx = random.randint(-self.spawn_radius, self.spawn_radius)
+            dy = random.randint(-self.spawn_radius, self.spawn_radius)
+
+            if abs(dx) + abs(dy) < self.spawn_radius - 2:
+                continue
+
+            x = px + dx
+            y = py + dy
+
+            if not (0 <= x < WIDTH and 0 <= y < DEPTH):
+                continue
+
+            # 1. Harus gelap
+            if self.world.light_map[x][y] > self.min_light:
+                continue
+
+            # 2. Harus bisa berdiri
+            if not self.world.is_standable(x, y):
+                continue
+
+            # 3. Spawn zombie
+            Zombie(
+                world=self.world,
+                player=self.player,
+                position=(x, y)
+            )
+            print(f"[SPAWN] Zombie at ({x},{y}) light={self.world.light_map[x][y]}")
+            return

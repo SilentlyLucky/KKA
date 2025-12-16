@@ -138,7 +138,7 @@ def launch_game_environment(world_type, save_data=None):
     game_world.update()
  
     if save_data:
-        spawn_pos = save_data.get('player_pos', (center_x, spawn_y))
+        spawn_pos = save_data.get('player_pos', (center_x, 40))
     else:
         # Cari permukaan aman
         if center_x < len(game_world.surface_heights):
@@ -156,14 +156,17 @@ def launch_game_environment(world_type, save_data=None):
         on_death=lambda: game_over_ui.show()
     )
     # --- SPAWN ZOMBIE ---
-    # We spawn him slightly to the right of the player
-    zombie = Zombie(
-        world=game_world, 
-        player=player, 
-        position=(center_x + 5, spawn_y + 5)
-    )
-    # --- Camera Follow ---
+    zombie_spawner = ZombieSpawner(game_world, player)
+
+    camera.scripts.clear()
     camera.add_script(SmoothFollow(target=player, offset=[0, 1, -30], speed=5))
+
+    camera.x = player.x
+    camera.y = player.y + 1
+    
+def update():
+    zombie_spawner.update()
+
     
 
 

@@ -11,64 +11,64 @@ class Scene(Entity):
         super().__init__()
         center = WIDTH / 2
 
-        self.tile_width = 30 
+        self.tile_width = 70 
         self.parallax_multiplier = -0.05 
         self.parallax_layers = []
         self.sky = Entity(
             parent=self,
             model='quad',
             texture='../Assets/Background/Layers/sky.png',
-            scale=(100, 50),
+            scale=(400, 400),
             z=100,
-            position=(center, 20)
+            position=(center, 40)
         )
         self.add_parallax_layer(
             texture='../Assets/Background/Layers/clouds_bg.png',
             z_depth=90,
             speed = 1,
-            position_y=20,
+            position_y=30,
             start_x=0,
-            scale=(self.tile_width, 40)
+            scale=(self.tile_width, 80)
         )
         self.add_parallax_layer(
             texture='../Assets/Background/Layers/glacial_mountains_lightened.png',
             z_depth=80,
             speed = 3,
-            position_y=25,
+            position_y=35,
             start_x=0,
-            scale=(self.tile_width, 30)
+            scale=(self.tile_width, 70)
         )
         self.add_parallax_layer(
             texture='../Assets/Background/Layers/cloud_lonely.png',
             z_depth=70,
             speed = 5,
-            position_y=20,
+            position_y=30,
             start_x=0,
-            scale=(self.tile_width, 30)
+            scale=(self.tile_width, 70)
         )
         self.add_parallax_layer(
             texture='../Assets/Background/Layers/clouds_mg_3.png',
             z_depth=70,
             speed = 4,
-            position_y=25,
+            position_y=35,
             start_x=0,
-            scale=(self.tile_width, 50)
+            scale=(self.tile_width, 90)
         )
         self.add_parallax_layer(
             texture='../Assets/Background/Layers/clouds_mg_2.png',
             z_depth=60,
             speed = 5,
-            position_y=25,
+            position_y=35,
             start_x=0,
-            scale=(self.tile_width, 50)
+            scale=(self.tile_width, 90)
         )
         self.add_parallax_layer(
             texture='../Assets/Background/Layers/clouds_mg_1_lightened.png',
             z_depth=50,
             speed = 7,
-            position_y=25,
+            position_y=35,
             start_x=0,
-            scale=(self.tile_width, 50)
+            scale=(self.tile_width, 90)
         )
         
     def add_parallax_layer(self, texture, z_depth, speed, position_y, start_x, scale):
@@ -87,7 +87,7 @@ class Scene(Entity):
         self.parallax_layers.append(initial_layer)
 
         # Duplicate the tiles (e.g., 3 tiles total: 0, 1, 2)
-        for m in range(1, 4): 
+        for m in range(1, 7): 
             new_tile = duplicate(initial_layer, x=start_x + m * self.tile_width)
             new_tile.start_x = start_x + m * self.tile_width 
 
@@ -98,7 +98,7 @@ class Scene(Entity):
 
     def update(self):
         camera_x = camera.world_position.x 
-        loop_distance = self.tile_width * 4 
+        loop_distance = self.tile_width * 7 
 
         for tile in self.parallax_layers:
             # --- 1. Parallax Movement ---
