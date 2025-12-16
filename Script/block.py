@@ -5,16 +5,15 @@ class Block(Entity):
     def __init__(self, position, block_type):
         data = BLOCK_DATA.get(block_type)
         # self.my_color = data['color'] if data else color.white
-        self.my_color = data['texture'] if data else None
         self.block_type = block_type
         self.solid = data.get('solid', True)
+        my_texture = data.get('texture')
         
         super().__init__(
             parent=scene,
             position=position,
             model='quad',
-            # color=self.my_color,
-            texture=self.my_color,
+            texture=my_texture,
             scale=(1, 1),
             collider='box',
             z=FG_Z

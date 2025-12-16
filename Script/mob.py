@@ -34,8 +34,6 @@ class Zombie(Entity):
         
         self.visual = Entity(
             parent=self,
-            model='quad',
-            color=color.violet, 
             scale=self.visual_scale_relative, 
             position=(0, 0, -0.1),
             double_sided=True 
@@ -71,6 +69,18 @@ class Zombie(Entity):
         self.y_velocity = 0
         self.is_grounded = False
 
+        self.skin()
+
+    def skin(self):
+        self.zombie_graphics = SpriteSheetAnimation('../Assets/Sprite/Zombie.png', parent=self.visual, tileset_size=(8,1), fps=6, animations={
+            'idle' : ((0,0), (0,0)),        # makes an animation from (0,0) to (0,0), a single frame
+            'walk_right' : ((1,0), (3,0)),
+            'walk_left' : ((4,0), (7,0)),
+            }
+            )
+        self.zombie_graphics.play_animation('idle')
+        self.current_anim_state = 'idle'
+
     def update(self):
         try:
             dt = time.dt
@@ -89,7 +99,7 @@ class Zombie(Entity):
                 self.y_velocity = 0
                 self.path = []
 
-            # ----------------------------------
+            """ # ----------------------------------
             # 2. VISUAL UPDATE
             # ----------------------------------
             if self.state == 'chase': self.visual.color = color.red
@@ -100,7 +110,7 @@ class Zombie(Entity):
                 next_node = self.path[self.current_path_index]
                 base_scale = self.visual_scale_relative[0]
                 if next_node[0] > self.x: self.visual.scale_x = base_scale
-                elif next_node[0] < self.x: self.visual.scale_x = -base_scale
+                elif next_node[0] < self.x: self.visual.scale_x = -base_scale """
 
             # ----------------------------------
             # 3. AI DECISION MAKING
@@ -196,6 +206,31 @@ class Zombie(Entity):
                 if self.state == 'idle':
                     self.idle_wait_timer = self.idle_wait_duration
                 self.path = [] # Clear path
+
+            # ----------------------------------
+            # 5.1. ANIMATION CONTROL (NEW LOGIC)
+            # ----------------------------------
+            if move_dir_x > 0:
+                # Moving Right
+                if self.current_anim_state != 'walk_right':
+                    self.zombie_graphics.play_animation('walk_right')
+                    self.current_anim_state = 'walk_right'
+                # Ensure visual scale is positive (facing right)
+                self.visual.scale_x = abs(self.visual_scale_relative[0])
+                
+            elif move_dir_x < 0:
+                # Moving Left
+                if self.current_anim_state != 'walk_left':
+                    self.zombie_graphics.play_animation('walk_left')
+                    self.current_anim_state = 'walk_left'
+                # Ensure visual scale is negative (facing left)
+                self.visual.scale_x = abs(self.visual_scale_relative[0])
+                
+            else:
+                # Not moving horizontally (Standing/Jumping up)
+                if self.current_anim_state != 'idle':
+                    self.zombie_graphics.play_animation('idle')
+                    self.current_anim_state = 'idle'
             
             # B. Raycast Movement (Horizontal)
             if move_dir_x != 0:

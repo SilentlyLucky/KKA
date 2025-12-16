@@ -11,6 +11,10 @@ GRASS = 1
 DIRT = 2
 STONE = 3
 BEDROCK = 4
+SAND = 5
+COAL = 6
+IRON = 7
+DIAMOND = 8
 TORCH = 9
 
 # --- DATABASE BLOCK ---
@@ -23,11 +27,15 @@ TORCH = 9
 # }
 
 BLOCK_DATA = {
-    GRASS: {'solid': True, 'name': 'Grass', 'texture': '../Assets/Textures/Grass.png'},
-    DIRT:  {'solid': True, 'name': 'Dirt', 'texture': '../Assets/Textures/Dirt.png'},
-    STONE: {'solid': True, 'name': 'Stone', 'texture': '../Assets/Textures/Stone.png'},
-    BEDROCK: {'name': 'Bedrock', 'solid': True, 'texture': '../Assets/Textures/Bedrock.png'},
-    TORCH: {'name': 'Torch', 'emits_light': True, 'solid': False, 'light_level': 15, 'texture': '../Assets/Icons/Furniture/Torch.png'},
+    GRASS: {'name': 'Grass', 'texture': '../Assets/Textures/grass.png', 'solid': True},
+    DIRT:  {'name': 'Dirt', 'texture': '../Assets/Textures/dirt.png', 'solid': True},
+    STONE: {'name': 'Stone', 'texture': '../Assets/Textures/cobblestone.png', 'solid': True},
+    BEDROCK: {'name': 'Bedrock', 'texture': '../Assets/Textures/bedrock.png', 'solid': True},
+    SAND: {'name': 'Sand', 'texture': '../Assets/Textures/sand.png', 'solid': True},
+    COAL: {'name': 'Coal', 'texture': '../Assets/Textures/coal_ore.png', 'solid': True},
+    IRON: {'name': 'Iron', 'texture': '../Assets/Textures/iron_ore.png', 'solid': True},
+    DIAMOND: {'name': 'Diamond', 'texture': '../Assets/Textures/diamond_ore.png', 'solid': True},
+    TORCH: {'name': 'Torch', 'texture': '../Assets/Icons/Furniture/Torch.png', 'emits_light': True, 'solid': False, 'light_level': 15},
 }
 
 # --- BG ---

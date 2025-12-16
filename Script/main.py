@@ -4,6 +4,7 @@ from player import Player
 from mob import Zombie  # <--- IMPORT ZOMBIE
 from config import WIDTH
 from zombie_spawner import ZombieSpawner
+from scene import Scene
 
 # --- Setup App ---
 app = Ursina()
@@ -21,6 +22,8 @@ game_world = World()
 center_x = int(WIDTH / 2)
 spawn_y = game_world.surface_heights[center_x] + 4
 
+scene = Scene()
+ 
 player = Player(
     world_instance=game_world, 
     position=(center_x, spawn_y)

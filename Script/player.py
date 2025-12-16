@@ -10,7 +10,7 @@ class Player(Entity):
             parent=scene,
             color=color.clear,
             origin_y=0, 
-            **kwargs
+            **kwargs,
         )
         self.world = world_instance
         
@@ -33,6 +33,8 @@ class Player(Entity):
             position=(0, 0, 0),
             color=color.white   # ← ini penting untuk lighting
         )
+
+        self.skin()
         
         # Cursor
         self.cursor = Entity(parent=camera, model='quad', color=color.red, scale=.05, rotation_z=45, z=-1)
@@ -46,6 +48,7 @@ class Player(Entity):
         self.is_grounded = False
 
         # Health
+        self.damage_flash_timer = 0
         self.max_health = PLAYER_MAX_HEALTH
         self.health = self.max_health
         self.health_bar_bg = Entity(parent=camera.ui, model='quad', color=color.red.tint(-0.2), scale=(0.5, 0.03), position=(-0.6, 0.45))
@@ -60,7 +63,7 @@ class Player(Entity):
     
     def get_env_light(self):
         x = int(round(self.x))
-        y = int(self.y - self.scale_y / 2)
+        y = int(self.y - self.scale_y / 2) + 1
 
         if 0 <= x < WIDTH and 0 <= y < DEPTH:
             return self.world.light_map[x][y]
@@ -71,14 +74,17 @@ class Player(Entity):
         lvl = max(0, min(15, lvl))
 
         brightness = 0.15 + 0.85 * (lvl / 15.0)
-        self.visual.color = color.white * brightness
+        base_color = color.white * brightness
 
+        if self.damage_flash_timer > 0:
+            self.visual.color = color.red
+            self.damage_flash_timer -= time.dt
+        else:
+            self.player_graphics.color = color.white * brightness
 
     def update(self):
         dt = time.dt
-        self.get_env_light()
         self.apply_environment_light()
-        self.update_health_ui()
         self.update_health_ui()
         if self.y < -20: self.take_damage(20); self.respawn()
 
@@ -182,9 +188,10 @@ class Player(Entity):
 
     def take_damage(self, amount):
         self.health -= amount
-        self.visual.color = color.red
-        invoke(setattr, self.visual, 'color', color.azure, delay=0.1)
-        if self.health <= 0: self.respawn(); self.health = self.max_health
+        self.damage_flash_timer = 0.1
+        if self.health <= 0:
+            self.respawn()
+            self.health = self.max_health
 
     def respawn(self):
         self.position = (int(WIDTH/2), self.world.surface_heights[int(WIDTH/2)] + 4)
