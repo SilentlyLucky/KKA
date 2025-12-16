@@ -8,6 +8,7 @@ class Block(Entity):
         self.block_type = block_type
         self.solid = data.get('solid', True)
         my_texture = data.get('texture')
+        is_double_sided = data.get('double_sided', False) if data else False
         
         super().__init__(
             parent=scene,
@@ -16,7 +17,8 @@ class Block(Entity):
             texture=my_texture,
             scale=(1, 1),
             collider='box',
-            z=FG_Z
+            z=FG_Z,
+            double_sided=is_double_sided
         )
         
         self.block_name = data['name'] if data else 'Unknown'

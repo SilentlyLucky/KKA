@@ -174,33 +174,6 @@ def launch_game_environment(world_type, save_data=None):
 def update():
     if zombie_spawner: 
         zombie_spawner.update()
-    
-    if held_keys['m']:  # Press 'M' to see debug info
-        print("=== MOUSE DEBUG ===")
-        print(f"Mouse position: {mouse.position}")
-        print(f"Mouse world point: {mouse.world_point}")
-        print(f"Mouse hovered entity: {mouse.hovered_entity}")
-        
-        if game_world:
-            print(f"World exists: True")
-            print(f"World FG parent: {game_world.fg_parent}")
-            print(f"World FG parent enabled: {game_world.fg_parent.enabled}")
-            print(f"World FG parent children count: {len(game_world.fg_parent.children)}")
-        
-        if player:
-            print(f"Player exists: True")
-            print(f"Player position: {player.position}")
-            print(f"Player traverse_target: {player.traverse_target}")
-        
-        # Try manual raycast
-        from ursina import raycast, Vec3
-        hit = raycast(camera.world_position, camera.forward, distance=100, ignore=[player, mouse_catcher])
-        print(f"Manual raycast hit: {hit.hit}")
-        if hit.hit:
-            print(f"Manual raycast entity: {hit.entity}")
-            print(f"Manual raycast point: {hit.world_point}")
-        
-        print("=" * 30)
 
 
 mouse_catcher = Entity(

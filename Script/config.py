@@ -10,19 +10,77 @@ DIRT_LAYER_THICKNESS = 5
 VIEW_DISTANCE_X = 22  
 VIEW_DISTANCE_Y = 16 
 
-# --- BLOK ID ---
+# --- BLOK ID (BLOCKS - PLACEABLE) ---
 GRASS = 1
 DIRT = 2
 STONE = 3
 BEDROCK = 4
 SAND = 5
-TORCH = 6
-COAL = 7
-IRON = 8
-DIAMOND = 9
-GRASS_PLANT = 10
-LOG = 11     # <-- Baru
-LEAVES = 12  # <-- Baru
+COAL_ORE = 6    # Ubah nama agar jelas ini ORE
+IRON_ORE = 7    # Ubah nama agar jelas ini ORE
+DIAMOND_ORE = 8 # Ubah nama agar jelas ini ORE
+GRASS_PLANT = 9
+LOG = 10     
+LEAVES = 11  
+GLASS = 12
+CRAFTING_TABLE = 13
+PLANK = 14
+BED_BLOCK = 15 # Blok tempat tidur yang sudah ditaruh (Head/Foot bisa kompleks, kita simplifikasi 1 blok dulu atau item saja)
+
+# Alias untuk kompatibilitas kode lama (sementara)
+COAL = COAL_ORE
+IRON = IRON_ORE
+DIAMOND = DIAMOND_ORE
+
+# --- ITEM ID (ITEMS - NON-PLACEABLE / SPECIAL) ---
+STICK = 100
+TORCH = 101
+BED_ITEM = 102 # Item tempat tidur di tangan
+RAW_CHICKEN = 103
+COOKED_CHICKEN = 104
+FEATHER = 105
+
+# MINING DROPS (Non-placeable items)
+COAL_ITEM = 150
+IRON_INGOT = 151
+DIAMOND_GEM = 152
+
+# TOOLS - WOOD
+WOODEN_SWORD = 200
+WOODEN_SHOVEL = 201
+WOODEN_PICKAXE = 202
+WOODEN_AXE = 203
+
+# TOOLS - STONE
+STONE_SWORD = 210
+STONE_SHOVEL = 211
+STONE_PICKAXE = 212
+STONE_AXE = 213
+
+# TOOLS - IRON
+IRON_SWORD = 220
+IRON_SHOVEL = 221
+IRON_PICKAXE = 222
+IRON_AXE = 223
+
+# TOOLS - DIAMOND
+DIAMOND_SWORD = 230
+DIAMOND_SHOVEL = 231
+DIAMOND_PICKAXE = 232
+DIAMOND_AXE = 233
+
+# ARMOR - IRON
+IRON_HELMET = 300
+IRON_CHESTPLATE = 301
+IRON_LEGGINGS = 302
+IRON_BOOTS = 303
+
+# ARMOR - DIAMOND
+DIAMOND_HELMET = 310
+DIAMOND_CHESTPLATE = 311
+DIAMOND_LEGGINGS = 312
+DIAMOND_BOOTS = 313
+
 
 # --- DATABASE BLOCK ---
 BLOCK_DATA = {
@@ -38,6 +96,9 @@ BLOCK_DATA = {
     GRASS_PLANT: {'name': 'Grass Plant', 'texture': '../Assets/Icons/Block/Grass.png', 'double_sided': True, 'solid': True},
     LOG: {'name': 'Oak Log',  'texture': '../Assets/Textures/log.png', 'solid': True},           
     LEAVES: {'name': 'Oak Leaves', 'texture': '../Assets/Textures/leaves.png', 'double_sided': True, 'solid': True}, # Daun juga double sided
+    CRAFTING_TABLE: {'name': 'Crafting Table'},
+    PLANK: {'name': 'Oak Plank'},
+    BED_BLOCK: {'name': 'Bed'}, # Visual di world
 }
 
 # --- BG ---
