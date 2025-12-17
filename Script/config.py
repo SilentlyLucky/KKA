@@ -16,9 +16,9 @@ DIRT = 2
 STONE = 3
 BEDROCK = 4
 SAND = 5
-COAL = 6    # Ubah nama agar jelas ini ORE
-IRON = 7    # Ubah nama agar jelas ini ORE
-DIAMOND = 8 # Ubah nama agar jelas ini ORE
+COAL_ORE = 6    # Ubah nama agar jelas ini ORE
+IRON_ORE = 7    # Ubah nama agar jelas ini ORE
+DIAMOND_ORE = 8 # Ubah nama agar jelas ini ORE
 GRASS_PLANT = 9
 LOG = 10     
 LEAVES = 11  
@@ -36,9 +36,9 @@ COOKED_CHICKEN = 104
 FEATHER = 105
 
 # MINING DROPS (Non-placeable items)
-COAL_ITEM = 150
-IRON_INGOT = 151
-DIAMOND_GEM = 152
+COAL= 150
+IRON = 151
+DIAMOND = 152
 
 # TOOLS - WOOD
 WOODEN_SWORD = 200
@@ -84,9 +84,9 @@ BLOCK_DATA = {
     STONE: {'name': 'Stone', 'texture': '../Assets/Textures/cobblestone.png', 'solid': True},
     BEDROCK: {'name': 'Bedrock', 'texture': '../Assets/Textures/bedrock.png', 'solid': True},
     SAND: {'name': 'Sand', 'texture': '../Assets/Textures/sand.png', 'solid': True},
-    COAL: {'name': 'Coal', 'texture': '../Assets/Textures/coal_ore.png', 'solid': True},
-    IRON: {'name': 'Iron', 'texture': '../Assets/Textures/iron_ore.png', 'solid': True},
-    DIAMOND: {'name': 'Diamond', 'texture': '../Assets/Textures/diamond_ore.png', 'solid': True},
+    COAL_ORE: {'name': 'Coal', 'texture': '../Assets/Textures/coal_ore.png', 'solid': True},
+    IRON_ORE: {'name': 'Iron', 'texture': '../Assets/Textures/iron_ore.png', 'solid': True},
+    DIAMOND_ORE: {'name': 'Diamond', 'texture': '../Assets/Textures/diamond_ore.png', 'solid': True},
     TORCH: {'name': 'Torch', 'texture': '../Assets/Icons/Furniture/Torch.png', 'emits_light': True, 'solid': False, 'light_level': 15},
     GRASS_PLANT: {'name': 'Grass Plant', 'texture': '../Assets/Icons/Block/Grass.png', 'double_sided': True, 'solid': True},
     LOG: {'name': 'Oak Log',  'texture': '../Assets/Textures/log.png', 'solid': True},           
@@ -100,9 +100,9 @@ BLOCK_DATA = {
     COOKED_CHICKEN: {'name': 'Cooked Chicken', 'texture': '../Assets/Icons/Item/Cooked_Chicken.png', 'solid': False},
     FEATHER: {'name': 'Feather', 'texture': '../Assets/Icons/Item/Feather.png', 'solid': False},
 
-    DIAMOND_GEM: {'name': 'Diamond Gem', 'texture': '../Assets/Icons/Materials/Diamond.png', 'solid': False},
-    COAL_ITEM: {'name': 'Coal Item', 'texture': '../Assets/Icons/Materials/Coal.png', 'solid': False},
-    IRON_INGOT: {'name': 'Iron Ingot', 'texture': '../Assets/Icons/Materials/Iron_Ingot.png', 'solid': False},
+    DIAMOND: {'name': 'Diamond Gem', 'texture': '../Assets/Icons/Materials/Diamond.png', 'solid': False},
+    COAL: {'name': 'Coal Item', 'texture': '../Assets/Icons/Materials/Coal.png', 'solid': False},
+    IRON: {'name': 'Iron Ingot', 'texture': '../Assets/Icons/Materials/Iron_Ingot.png', 'solid': False},
 
     DIAMOND_HELMET: {'name': 'Diamond Helmet', 'texture': '../Assets/Icons/Equipments/Diamond_Helmet.png', 'solid': False},
     DIAMOND_CHESTPLATE: {'name': 'Diamond Chestplate', 'texture': '../Assets/Icons/Equipments/Diamond_Chestplate.png', 'solid': False},

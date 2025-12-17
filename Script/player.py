@@ -298,9 +298,9 @@ class Player(Entity):
                         
                         # --- LOGIKA DROP ITEM ---
                         item_to_give = block_type
-                        if block_type == COAL: item_to_give = COAL_ITEM
-                        elif block_type == IRON: item_to_give = IRON_INGOT
-                        elif block_type == DIAMOND: item_to_give = DIAMOND_GEM
+                        if block_type == COAL_ORE: item_to_give = COAL
+                        elif block_type == IRON_ORE: item_to_give = IRON
+                        elif block_type == DIAMOND_ORE: item_to_give = DIAMOND
                         elif block_type == GLASS: item_to_give = None 
                         
                         if item_to_give:
