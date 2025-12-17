@@ -93,7 +93,7 @@ class Inventory(Entity):
         craft_x_start = 0.08  # Sesuaikan lagi dengan posisi kotak pada gambar
         craft_y_start = 0.275
         
-        slot_size = 0.079      # Ukuran dasar satu kotak
+        slot_size = 0.08      # Ukuran dasar satu kotak
         gap = 0.004           # <<< Atur besar celah di sini (semakin besar angkanya, semakin renggang)
 
         for row in range(2):

@@ -11,13 +11,16 @@ class CraftingTableUI(Entity):
         self.bg = Entity(
             parent=self, 
             model='quad', 
-            scale=(0.95, 0.8), 
-            color=color.rgba(0, 0, 0, 0.85), 
+            scale=(0.8, 0.8), 
+            texture='../Assets/GUI/crafting_table.png',            
+            color=color.white,
             z=1
         )
         
         self.tooltip = Text(parent=camera.ui, text="", origin=(0, 0), scale=1.5, color=color.white, z=-100, visible=False, background=True)
-        self.tooltip.background.color = color.rgba(0,0,0,0.8)
+        self.tooltip.background.color = color.rgba(0,0,0,0.2)
+        self.tooltip.background.scale_x = 0.15
+        self.tooltip.background.scale_y = 0.05
 
         self.inv_slots_visual = [] 
         self.craft_slots_visual = []
@@ -30,44 +33,43 @@ class CraftingTableUI(Entity):
             self.inv_slots_visual.append(s)
 
         # Main Storage (9-35)
-        start_y = 0.05
+        start_y = -0.042 # Turunkan sedikit agar masuk ke kotak inventory bawah
         for row in range(3):
             for col in range(9):
                 idx = 9 + (row * 9) + col
                 s = self._create_slot(
-                    index=idx, 
-                    x=(col - 4) * 0.09, 
-                    y=start_y - (row * 0.09)
+                    index=idx,
+                    x=(col - 4) * 0.0816, # Jarak antar kolom lebih rapat (asumsi)
+                    y=start_y - (row * 0.086) # Jarak antar baris
                 )
                 self.inv_slots_visual.append(s)
 
         self.crafting_label = Text(parent=self, text="Crafting", x=-0.3, y=0.35, scale=1.5, color=color.white)
 
-        grid_start_x = -0.2
-        grid_start_y = 0.28
-        
-        craft_scale = 0.05   # Ukuran kotak (Standar inventory: 0.08)
-        craft_spacing = 0.06 # Jarak antar kotak (Standar inventory: 0.09)
+        grid_start_x = -0.23
+        grid_start_y = 0.276
+        craft_scale = 0.08    # Ukuran satu slot
+        craft_spacing = 0.0035 
         
         for row in range(3):
             for col in range(3):
                 internal_idx = (row * 3) + col
+
                 s = self._create_slot(
                     index=100 + internal_idx, 
-                    x=grid_start_x + (col * craft_spacing),
-                    y=grid_start_y - (row * craft_spacing),
-                    scale=craft_scale,
-                    col=color.gray
+                    x=grid_start_x + (col * (craft_spacing + craft_scale)),
+                    y=grid_start_y - (row * (craft_spacing + craft_scale)),
+                    col=color.rgba(0,0,0,0.1)
                 )
                 self.craft_slots_visual.append(s)
 
         # Output Slot (Besar)
         self.output_slot = self._create_slot(
-            index=109, # ID 109 untuk output
-            x=grid_start_x + (3.5 * craft_spacing),
-            y=grid_start_y - craft_spacing,        
-            scale=craft_scale * 1.5,               
-            col=color.white
+            index=109,
+            x=0.198, 
+            y=0.195,        
+            scale=0.11,             
+            col=color.rgba(0,0,0,0.1)
         )
         self.craft_slots_visual.append(self.output_slot)
         
