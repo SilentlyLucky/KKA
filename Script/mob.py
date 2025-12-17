@@ -152,6 +152,8 @@ class Zombie(Entity):
 
     def die(self):
         print("[ZOMBIE] Died")
+        if hasattr(self, 'zombie_graphics'):
+            self.zombie_graphics.animations = []
         destroy(self)
 
     def attack_player(self):
@@ -255,8 +257,6 @@ class Zombie(Entity):
             self.y_vel -= self.gravity * dt
             self.y_vel = max(self.y_vel, -self.max_fall)
         self.y += self.y_vel * dt
-
-
 # =====================================================
 # CHICKEN
 # =====================================================
@@ -265,7 +265,7 @@ class Chicken(Entity):
         super().__init__(
             parent=scene,
             model='quad',
-            color=color.red,
+            color=color.clear,
             origin_y=0,
             position=kwargs.get('position', (0,0)),
             scale=(0.8, 0.8),
@@ -289,15 +289,37 @@ class Chicken(Entity):
         self.flee_duration = CHICKEN_FLEE_DURATION
         self.idle_timer = 0.0
         self.walk_cd_min = CHICKEN_IDLE_MIN
-        self.walk_cd_max = CHICKEN_IDLE_MAX
+        self.walk_cd_max = CHICKEN_IDLE_MAX 
+        
+        target_w, target_h = 1.0, 1.0 # Ukuran visual ayam
+        self.visual_scale_relative = (target_w / self.scale_x, target_h / self.scale_y)
+        
+        self.visual = Entity(
+            parent=self,
+            scale=self.visual_scale_relative,
+            position=(0, 0, -0.1),
+            double_sided=True
+        )
+        self.skin()
         print(f"[SPAWN] Chicken at {self.position}")
+
+    def skin(self):
+        self.chicken_graphics = SpriteSheetAnimation('../Assets/Sprite/Ayam.png', parent=self.visual, tileset_size=(6,1), fps=6, animations={
+            'idle':((0,0),(0,0)), 
+            'walk_right':((0,0),(2,0)), 
+            'walk_left':((3,0),(5,0))})
+        self.chicken_graphics.play_animation('idle')
+        self.current_anim_state = 'idle'
+        
 
     def update(self):
         dt = time.dt
         
         # --- DESPAWN LOGIC (MENGGUNAKAN CONFIG) ---
         if distance(self.position, self.player.position) > MOB_DESPAWN_RANGE:
-            destroy(self)
+            if hasattr(self, 'chicken_graphics'):
+                self.chicken_graphics.animations = []
+                destroy(self)
             return
 
         self.ai(dt)
@@ -321,13 +343,24 @@ class Chicken(Entity):
 
     def take_damage(self, dmg):
         self.hp -= dmg
-        self.blink(color.red, duration=0.2)
+        if hasattr(self, 'chicken_graphics'):
+            self.chicken_graphics.color = color.red
+            invoke(setattr, self.chicken_graphics, 'color', color.white, delay=0.2)
+
         print(f"[CHICKEN] Ouch! HP: {self.hp}")
-        if self.hp <= 0: destroy(self); return
+        if self.hp <= 0: self.die(); return
         self.state = 'flee'
         self.flee_timer = self.flee_duration
         self.path = []; self.idx = 0
         self.run_away()
+        
+    def die(self):
+        print("[CHICKEN] Died -> Dropping Cooked Chicken & Feather")
+        if hasattr(self.player, 'inventory_system'):
+            self.player.inventory_system.add_item(CHICKEN)
+        if hasattr(self, 'chicken_graphics'):
+            self.chicken_graphics.animations = []
+        destroy(self)
 
     def random_walk(self):
         start = (round(self.x), round(self.y))

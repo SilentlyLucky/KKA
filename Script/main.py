@@ -2,9 +2,9 @@ from ursina import *
 from world import World
 from player import Player
 from mob import ZombieSpawner, ChickenSpawner
-from config import WIDTH
+from config import *
 from scene import Scene
-from menu import Menu
+from menu import *
 from save_system import save_game, load_game
 
 # --- Setup App ---
@@ -26,6 +26,7 @@ pause_ui = None
 menu = None
 current_world_name = None
 current_world_type = None
+current_difficulty_state = "EASY"
 is_paused = False
 zombie_spawner = None
 chicken_spawner = None
@@ -37,39 +38,11 @@ class GameInputController(Entity):
     def input(self, key):
         global is_paused
         if player and not menu:
-            if key == 'l':
+            if key == 'escape':
                 if not is_paused:
                     pause_game()
                 else:
                     resume_game()
-
-# --- PAUSE MENU UI ---
-class PauseMenu(Entity):
-    def __init__(self, on_resume, on_save_exit):
-        super().__init__(parent=camera.ui, enabled=False)
-        self.on_resume = on_resume
-        self.on_save_exit = on_save_exit
-        
-        self.bg = Entity(parent=self, model='quad', scale=(2,2), color=color.rgba(0,0,0,180), z=1)
-        self.title = Text(parent=self, text="PAUSED", origin=(0,0), y=0.2, scale=2)
-        
-        self.btn_resume = Button(parent=self, text="Resume", y=0.05, scale=(0.3, 0.08), color=color.azure, text_color=color.black, on_click=self.resume)
-        self.btn_save = Button(parent=self, text="Save & Exit", y=-0.05, scale=(0.3, 0.08), color=color.green, text_color=color.black, on_click=self.save_exit)
-        
-        # Petunjuk tombol
-        self.hint = Text(parent=self, text="Press L to Resume", origin=(0,0), y=-0.2, scale=1, color=color.gray)
-
-    def resume(self):
-        self.on_resume()
-        
-    def save_exit(self):
-        self.on_save_exit()
-
-    def show(self):
-        self.enabled = True
-        
-    def hide(self):
-        self.enabled = False
 
 # --- GAME OVER UI ---
 class GameOverOverlay(Entity):
@@ -95,7 +68,7 @@ class GameOverOverlay(Entity):
         self.enabled = True
 
 def cleanup_game():
-    global game_world, player, mouse_catcher, game_over_ui, pause_ui, zombie_spawner
+    global game_world, player, mouse_catcher, game_over_ui, pause_ui, zombie_spawner, chicken_spawner
     camera.scripts.clear()
     
     for ent in (player, mouse_catcher, game_world, game_over_ui, pause_ui):
@@ -109,12 +82,15 @@ def cleanup_game():
     mouse_catcher = None
     game_over_ui = None
     pause_ui = None
-    #zombie_spawner = None
-    #chicken_spawner = None
+    zombie_spawner = None
+    chicken_spawner = None
 
-def start_new_game(name, world_type):
-    global current_world_name
+def start_new_game(name, world_type, difficulty ="EASY"):
+    global current_world_name, current_difficulty_state
     current_world_name = name
+    current_difficulty_state = difficulty
+    set_difficulty(difficulty)
+    print(f"[DEBUG] Starting new game: {name} [{current_difficulty_state}]")
     launch_game_environment(world_type=world_type, save_data=None)
 
 def load_saved_game(name):
@@ -123,6 +99,10 @@ def load_saved_game(name):
     
     data = load_game(name)
     if data:
+        loaded_diff = data.get('difficulty', 'EASY')
+        current_difficulty_state = loaded_diff
+        set_difficulty(loaded_diff)
+        print(f"[DEBUG] Loading save: {name}")
         launch_game_environment(world_type=data['world_type'], save_data=data)
     else:
         print("Error loading game")
@@ -240,8 +220,8 @@ def resume_game():
     mouse.locked = False
 
 def save_and_exit_game():
-    global current_world_name
-    print("Saving...")
+    global current_world_name, current_difficulty_state
+    print("Saving... Current Global Difficulty is: {current_difficulty_state}")
     if game_world and player and current_world_name:
         w_data = game_world.get_save_data()
         
@@ -253,7 +233,9 @@ def save_and_exit_game():
         # Ambil data inventory dari player
         i_data = player.inventory_system.get_save_data()
         
-        save_game(current_world_name, w_data, p_data, i_data)
+        save_game(current_world_name, w_data, p_data, i_data, difficulty=current_difficulty_state)
+        exit_app()
+        return
     resume_game() 
     back_to_menu()
 

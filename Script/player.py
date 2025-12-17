@@ -35,13 +35,13 @@ class Player(Entity):
         target_visual_width = 1.0
         target_visual_height = 2.0
         
-        calc_scale_x = (target_visual_width / self.scale_x)
-        calc_scale_y = (target_visual_height / self.scale_y)
+        calc_scale_x = (target_visual_width / self.scale_x)# 1.0 / 0.9 = 1.111...
+        calc_scale_y = (target_visual_height / self.scale_y)# 2.0 / 1.8 = 1.111...
         
         self.visual = Entity(
             parent=self,
             scale=(calc_scale_x, calc_scale_y), 
-            position=(-0.15, 0, 0),
+            position=(0.015, 0.05, 0),
             color=color.white
         )
 
@@ -62,7 +62,7 @@ class Player(Entity):
             enabled=True
         )
 
-        # Physics Stats FROM CONFIG
+        # Physics Stats
         self.walk_speed = PLAYER_WALK_SPEED
         self.jump_force = PLAYER_JUMP_FORCE
         self.gravity = GLOBAL_GRAVITY
@@ -78,20 +78,20 @@ class Player(Entity):
         # UI Crafting Table 3x3
         self.crafting_table_ui = CraftingTableUI(inventory_ref=self.inventory_system)
 
-        # Health FROM CONFIG
+        # Health
         self.damage_flash_timer = 0
         self.max_health = PLAYER_MAX_HEALTH
         self.health = self.max_health
         self.heart_container = Entity(parent=camera.ui, position=(-0.7, 0.45), scale=1)
         self.hearts = []
-        self.max_hearts = 10 
+        self.max_hearts = 10  # 10 hearts = 20 health (each heart = 2 HP)
 
         # Load heart textures
         self.heart_empty_tex = load_texture('../Assets/Interface/Heart_Empty.png')
         self.heart_half_tex = load_texture('../Assets/Interface/Heart_Half.png')
         self.heart_full_tex = load_texture('../Assets/Interface/Heart_Full.png')
 
-        heart_spacing = 0.04 
+        heart_spacing = 0.04  # Spacing between hearts
         for i in range(self.max_hearts):
             heart = Entity(
                 parent=self.heart_container,
@@ -155,7 +155,7 @@ class Player(Entity):
         if self.y < -20: self.take_damage(20); self.respawn()
 
         # ====================================================
-        # PHYSICS
+        # CUSTOM PHYSICS (0.9 x 1.8)
         # ====================================================
 
         # --- 1. HORIZONTAL ---
@@ -169,16 +169,15 @@ class Player(Entity):
             
             for off_y in offsets_y:
                 origin = self.position + Vec3(0, off_y, 0)
-                # FIX: Only traverse the world (blocks), ignoring mobs/entities
-                hit = raycast(origin, Vec3(dx, 0, 0), distance=dist_x, traverse_target=self.world, ignore=(self, self.visual), debug=False)
-                if self.is_solid_hit(hit):
+                hit = raycast(origin, Vec3(dx, 0, 0), distance=dist_x, ignore=(self, self.visual), debug=False)
+                if hit.hit:
                     hit_wall = True
                     break
             
             if not hit_wall:
                 self.x += move_amount
 
-        # --- ANIMATION ---
+        # --- ANIMATION LOGIC (Moved to update) ---
         if dx > 0:
             if self.current_anim_state != 'walk_right':
                 self.player_graphics.play_animation('walk_right')
@@ -205,9 +204,8 @@ class Player(Entity):
         pos_left = self.position + Vec3(-half_w, ray_origin_y, 0)
         pos_right = self.position + Vec3(half_w, ray_origin_y, 0)
         
-        # FIX: Only traverse the world for ground checks
-        hit_l = raycast(pos_left, ray_direction, distance=ray_dist, traverse_target=self.world, ignore=(self, self.visual), debug=False)
-        hit_r = raycast(pos_right, ray_direction, distance=ray_dist, traverse_target=self.world, ignore=(self, self.visual), debug=False)
+        hit_l = raycast(pos_left, ray_direction, distance=ray_dist, ignore=(self, self.visual), debug=False)
+        hit_r = raycast(pos_right, ray_direction, distance=ray_dist, ignore=(self, self.visual), debug=False)
         
         if self.is_solid_hit(hit_l) or self.is_solid_hit(hit_r):
             self.is_grounded = True
@@ -227,8 +225,7 @@ class Player(Entity):
 
         if self.y_velocity > 0:
             head_origin = self.position + Vec3(0, self.scale_y/2 - 0.1, 0)
-            # FIX: Only traverse the world for ceiling checks
-            hit_head = raycast(head_origin, Vec3(0,1,0), distance=0.2, traverse_target=self.world, ignore=(self, self.visual), debug=False)
+            hit_head = raycast(head_origin, Vec3(0,1,0), distance=0.2, ignore=(self, self.visual), debug=False)
             if self.is_solid_hit(hit_head):
                 self.y_velocity = 0 
 
@@ -237,11 +234,10 @@ class Player(Entity):
 
     def skin(self):
         self.player_graphics = SpriteSheetAnimation('../Assets/Sprite/MC.png', parent=self.visual, tileset_size=(7,1), fps=8, animations={
-            'idle' : ((0,0), (0,0)),        
+            'idle' : ((0,0), (0,0)),        # makes an animation from (0,0) to (0,0), a single frame
             'walk_right' : ((1,0), (3,0)),
             'walk_left' : ((4,0), (6,0)),
-            },
-            double_sided=True
+            }
             )
         self.player_graphics.play_animation('idle')
         self.current_anim_state = 'idle'
@@ -268,16 +264,13 @@ class Player(Entity):
                 self.is_grounded = False
 
         if key == 'left mouse down':
-            # --- 1. ATTACK LOGIC ---
             if mouse.hovered_entity and hasattr(mouse.hovered_entity, 'take_damage'):
-                dist = distance(self.position, mouse.hovered_entity.position)
-                if dist <= self.attack_range:
+                if distance(self.position, mouse.hovered_entity.position) <= self.attack_range:
                     held_item_id = self.inventory_system.get_active_block()
                     dmg = TOOL_DAMAGE.get(held_item_id, 1) 
                     mouse.hovered_entity.take_damage(dmg)
                     return 
-
-            # --- 2. BREAK BLOCK LOGIC ---
+                
             if mouse.hovered_entity and isinstance(mouse.hovered_entity, Block): 
                 if distance(self.position, mouse.hovered_entity.position) < 5:
                     block_type = mouse.hovered_entity.block_type
@@ -285,33 +278,41 @@ class Player(Entity):
                     held_item_id = self.inventory_system.get_active_block()
                     
                     tool_power = 0
+                    
                     if held_item_id == WOODEN_PICKAXE: tool_power = 1
                     elif held_item_id == IRON_PICKAXE: tool_power = 3
                     elif held_item_id == DIAMOND_PICKAXE: tool_power = 4
                     
                     block_hardness = 0 
-                    if block_type in (STONE, COAL, IRON): block_hardness = 1
-                    elif block_type == DIAMOND: block_hardness = 3
-                    elif block_type == BEDROCK: block_hardness = 999 
+                    
+                    if block_type in (STONE, COAL, IRON):
+                        block_hardness = 1
+                    elif block_type == DIAMOND:
+                        block_hardness = 3
+                    elif block_type == BEDROCK:
+                        block_hardness = 999
                     
                     can_break = tool_power >= block_hardness
                     
                     if can_break:
                         self.world.remove_block(mouse.hovered_entity)
                         
+                        # --- LOGIKA DROP ITEM ---
                         item_to_give = block_type
-                        if block_type == COAL: item_to_give = COAL_ITEM
-                        elif block_type == IRON: item_to_give = IRON_INGOT
-                        elif block_type == DIAMOND: item_to_give = DIAMOND_GEM
+                        if block_type == COAL_ORE: item_to_give = COAL
+                        elif block_type == IRON_ORE: item_to_give = IRON
+                        elif block_type == DIAMOND_ORE: item_to_give = DIAMOND
                         elif block_type == GLASS: item_to_give = None 
                         
                         if item_to_give:
                             self.inventory_system.add_item(item_to_give)
                     else:
-                        print("Pickaxe not strong enough!") 
+                        # Opsional: Beri efek visual/suara kalau gagal break
+                        print("Not strong enough!") 
 
         if key == 'right mouse down':
-             if mouse.hovered_entity and isinstance(mouse.hovered_entity, Block):
+            print("=== RIGHT MOUSE CLICKED ===")
+            if mouse.hovered_entity and isinstance(mouse.hovered_entity, Block):
                     if distance(self.position, mouse.hovered_entity.position) < 5:
                         if mouse.hovered_entity.block_type == CRAFTING_TABLE:
                             self.crafting_table_ui.open()
@@ -319,27 +320,53 @@ class Player(Entity):
                         elif mouse.hovered_entity.block_type == BED_BLOCK:
                             set_spawn_point(self, mouse.hovered_entity.position)
                             return
-             if mouse.position:
+
+            if mouse.position:
                 fov = camera.fov
                 world_x = camera.x + (mouse.x * fov)
                 world_y = camera.y + (mouse.y * fov)
+                
                 mx, my = round(world_x), round(world_y)
+                
+                print(f"Mouse screen pos: {mouse.position}")
+                print(f"Calculated world pos: ({world_x}, {world_y})")
+                print(f"Rounded target: ({mx}, {my})")
+                print(f"Player position: ({self.x}, {self.y})")
+                
                 dx = abs(mx - self.x)
                 dy = abs(my - self.y)
+                
                 safe_x = (self.scale_x/2) + 0.5 
                 safe_y = (self.scale_y/2) + 0.5
+                
                 if not (dx < safe_x and dy < safe_y):
+                    print("✓ Not inside player safe zone")
+                    
                     dist = distance((mx, my, 0), self.position)
+                    print(f"Distance to target: {dist}")
+                    
                     if dist < 5:
+                        print("✓ Within reach")
+                        
                         if (mx, my) not in self.world.block_positions:
+                            print("✓ Position is empty - PLACING BLOCK!")
                             block_to_place = self.inventory_system.get_active_block()
+                            
                             if block_to_place:
                                 real_block = block_to_place
                                 if block_to_place == BED_ITEM: real_block = BED_BLOCK
                                 if real_block < 100:
                                     self.world.place_block(mx, my, real_block)
                                     self.inventory_system.decrease_active_item()
-
+                        else:
+                            print("✗ Position already occupied")
+                    else:
+                        print("✗ Too far away")
+                else:
+                    print("✗ Too close to player")
+            else:
+                print("✗ No mouse position")
+                            
     def on_destroy(self):
         if hasattr(self, 'cursor_highlight') and self.cursor_highlight:
             destroy(self.cursor_highlight)
@@ -361,16 +388,22 @@ class Player(Entity):
             self.on_death()
 
     def update_health_ui(self):
+        """Update Minecraft-style hearts based on current health"""
+        
         for i in range(self.max_hearts):
             heart_hp_threshold = (i + 1) * 2 
             heart_hp_min = i * 2  
+            
             if self.health >= heart_hp_threshold:
+                # Full heart
                 self.hearts[i].texture = self.heart_full_tex
                 self.hearts[i].enabled = True
             elif self.health > heart_hp_min:
+                # Half heart
                 self.hearts[i].texture = self.heart_half_tex
                 self.hearts[i].enabled = True
             else:
+                # Empty heart
                 self.hearts[i].texture = self.heart_empty_tex
                 self.hearts[i].enabled = True
 
@@ -379,3 +412,9 @@ class Player(Entity):
         self.visual.color = color.red
         invoke(setattr, self.visual, 'color', color.azure, delay=0.1)
         if self.health <= 0: self.respawn(); self.health = self.max_health
+
+    def respawn(self):
+        self.position = (int(WIDTH/2), self.world.surface_heights[int(WIDTH/2)] + 4)
+        self.y_velocity = 0
+
+

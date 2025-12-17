@@ -22,8 +22,10 @@ class Inventory(Entity):
         self.hand_icon = Entity(parent=camera.ui, model='quad', scale=0.07, z=-99, visible=False, color=color.white)
         self.hand_text = Text(parent=self.hand_icon, text="", origin=(0, 0), color=color.white, scale=10, z=-1)
 
-        self.tooltip = Text(parent=camera.ui, text="", origin=(0, 0), scale=1.5, color=color.white, z=-100, visible=False, background=True)
-        self.tooltip.background.color = color.rgba(0,0,0,0.8)
+        self.tooltip = Text(parent=camera.ui, text="", origin=(0, 0), scale=1, color=color.white, z=-100, visible=False, background=True)
+        self.tooltip.background.color = color.rgba(0,0,0,0.2)
+        self.tooltip.background.scale_x = 0.15
+        self.tooltip.background.scale_y = 0.05
 
         self.slots = [] 
         
@@ -34,7 +36,8 @@ class Inventory(Entity):
             s = self._create_slot(
                 parent=self.hotbar_parent, 
                 index=i, 
-                x=(i - 4) * 0.09 
+                x=(i - 4) * 0.082,
+                y=0.12
             )
             self.hotbar_slots.append(s)
             self.slots.append(s)
@@ -46,30 +49,31 @@ class Inventory(Entity):
         self.bg = Entity(
             parent=self.main_panel, 
             model='quad', 
-            scale=(0.95, 0.8), 
-            color=color.rgba(0, 0, 0, 0.85), 
-            z=1
+            scale=(0.8, 0.8), 
+            texture='../Assets/GUI/inventory.png',
+            color=color.white, 
+            z=10
         )
         
         # > Main Inventory Grid (9x3) - Indeks 9 sampai 35
         # Posisi di tengah panel
-        start_y = 0.05
+        start_y = -0.042 # Turunkan sedikit agar masuk ke kotak inventory bawah
         for row in range(3):
             for col in range(9):
                 idx = 9 + (row * 9) + col
                 s = self._create_slot(
                     parent=self.main_panel,
                     index=idx,
-                    x=(col - 4) * 0.09,
-                    y=start_y - (row * 0.09)
+                    x=(col - 4) * 0.0816, # Jarak antar kolom lebih rapat (asumsi)
+                    y=start_y - (row * 0.086) # Jarak antar baris
                 )
                 self.slots.append(s)
 
         # > Armor Slots (4 Petak di Pojok Kiri Atas)
-        armor_x = -0.37
-        armor_start_y = 0.3
+        armor_x = -0.323
+        armor_start_y = 0.323
         
-        self.armor_label = Text(parent=self.main_panel, text="Armor", x=armor_x, y=armor_start_y + 0.05, scale=1)
+        """ self.armor_label = Text(parent=self.main_panel, text="Armor", x=armor_x, y=armor_start_y + 0.05, scale=1) """
         
         for i in range(4):
             idx = 41 + i
@@ -77,30 +81,39 @@ class Inventory(Entity):
                 parent=self.main_panel,
                 index=idx, 
                 x=armor_x,
-                y=armor_start_y - (i * 0.05),
-                scale=0.045, 
-                col=color.azure
+                y=armor_start_y - (i * 0.084),
+                scale=0.08, 
+                col=color.rgba(0, 0, 0, 0.2)
             )
             self.slots.append(s)
 
         # > Crafting Slots (2x2 di Pojok Kanan Atas)
-        self.crafting_label = Text(parent=self.main_panel, text="Crafting", x=0.2, y=0.35, scale=1)
+        """ self.crafting_label = Text(parent=self.main_panel, text="Crafting", x=0.2, y=0.35, scale=1) """
         # Indeks 36-39
         craft_indices = [[36, 37], [38, 39]]
+        craft_x_start = 0.08  # Sesuaikan lagi dengan posisi kotak pada gambar
+        craft_y_start = 0.275
+        
+        slot_size = 0.08      # Ukuran dasar satu kotak
+        gap = 0.004           # <<< Atur besar celah di sini (semakin besar angkanya, semakin renggang)
+
         for row in range(2):
             for col in range(2):
                 idx = craft_indices[row][col]
                 s = self._create_slot(
                     parent=self.main_panel,
                     index=idx, 
-                    x=0.2 + (col * 0.09),
-                    y=0.28 - (row * 0.09),
-                    col=color.gray
+                    # Rumus: Posisi Awal + (Indeks * (Ukuran + Gap))
+                    x=craft_x_start + (col * (slot_size + gap)),
+                    y=craft_y_start - (row * (slot_size + gap)),
+                    col=color.rgba(0,0,0,0.1) 
                 )
+                # Pastikan scale slot di _create_slot konsisten dengan slot_size
+                s.scale = slot_size 
                 self.slots.append(s)
         
         # > Crafting Output (Besar) - Indeks 40
-        self.craft_out_slot = self._create_slot(parent=self.main_panel, index=40, x=0.4, y=0.23, scale=0.12, col=color.white)
+        self.craft_out_slot = self._create_slot(parent=self.main_panel, index=40, x=0.336, y=0.225, scale=0.08, col=color.rgba(0,0,0,0.1))
         self.slots.append(self.craft_out_slot)
 
         # Load Data jika ada
@@ -159,7 +172,7 @@ class Inventory(Entity):
             text="",
             origin=(0.5, -0.5),
             position=(0.46, -0.46), 
-            scale=2.6 * scale, 
+            scale=1.5 * scale, 
             color=color.black,
             z=-0.9 
         )
@@ -451,8 +464,8 @@ class Inventory(Entity):
     def highlight_selected_hotbar(self):
         for i, slot in enumerate(self.hotbar_slots):
             if i == self.selected_index:
-                slot.color = color.white
-                slot.scale = 0.09 
+                slot.color = color.rgba(1,1,1,0.5)
+                slot.scale = 0.08 
             else:
                 slot.color = color.rgba(1,1,1,0.2)
                 slot.scale = 0.08

@@ -207,11 +207,11 @@ class World(Entity):
 
                 if (DEPTH * 0.3) < y < (DEPTH * 0.7):
                     if self._touches_cave(x, y):
-                        if random.random() < 0.20: self.ore_map[(x, y)] = COAL
+                        if random.random() < 0.20: self.ore_map[(x, y)] = COAL_ORE
                 if y < (DEPTH * 0.5):
                     if random.random() < 0.03: 
-                         self.ore_map[(x, y)] = IRON
-                         if x + 1 < WIDTH: self.ore_map[(x+1, y)] = IRON
+                         self.ore_map[(x, y)] = IRON_ORE
+                         if x + 1 < WIDTH: self.ore_map[(x+1, y)] = IRON_ORE
                 if y < 10:
                     if random.random() < 0.05: self.ore_map[(x, y)] = DIAMOND
 

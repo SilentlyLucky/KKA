@@ -8,6 +8,7 @@ class Block(Entity):
         self.solid = data.get('solid', True)
         my_texture = data.get('texture')
         is_double_sided = data.get('double_sided', False) if data else False
+        persistent = True
         
         super().__init__(
             parent=scene,
@@ -17,7 +18,8 @@ class Block(Entity):
             scale=(1, 1),
             collider='box',
             z=FG_Z,
-            double_sided=is_double_sided
+            double_sided=is_double_sided,
+            persistent=True
         )
         
         self.block_type = block_type
