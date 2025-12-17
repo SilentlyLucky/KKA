@@ -123,11 +123,37 @@ class World(Entity):
                             self.map_data[x][h] = GRASS_PLANT
 
     def is_standable(self, x, y):
-        return (
-            self.map_data[x][y] == 0 and
-            self.map_data[x][y+1] == 0 and
-            self.map_data[x][y-1] == 1
-    )
+        """
+        Mengecek apakah posisi (x, y) valid untuk entitas berdiri.
+        Syarat:
+        1. Badan (x, y) harus ada di PASSABLE_BLOCKS (kosong/tembus).
+        2. Kepala (x, y+1) harus ada di PASSABLE_BLOCKS.
+        3. Kaki (x, y-1) harus SOLID (TIDAK ada di PASSABLE_BLOCKS).
+        """
+        
+        # Cek batas dunia
+        if not (0 <= x < WIDTH and 0 <= y < DEPTH):
+            return False
+
+        # 1. Cek Badan (Posisi saat ini)
+        if self.map_data[x][y] not in PASSABLE_BLOCKS:
+            return False
+            
+        # 2. Cek Kepala (Posisi atas)
+        if y + 1 < DEPTH:
+            if self.map_data[x][y+1] not in PASSABLE_BLOCKS:
+                return False
+            
+        # 3. Cek Pijakan (Posisi bawah)
+        if y - 1 >= 0:
+            ground_val = self.map_data[x][y-1]
+            # Pijakan harus SOLID. Jadi ground_val TIDAK boleh ada di PASSABLE_BLOCKS.
+            if ground_val in PASSABLE_BLOCKS: 
+                return False
+        else:
+            return False # Void (y < 0) tidak bisa dipijak
+            
+        return True
 
     def generate_trees(self):
         print("Generating Trees...")

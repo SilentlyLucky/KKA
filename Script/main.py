@@ -1,7 +1,7 @@
 from ursina import *
 from world import World
 from player import Player
-from mob import ZombieSpawner
+from mob import ZombieSpawner, ChickenSpawner
 from config import WIDTH
 from scene import Scene
 from menu import Menu
@@ -15,7 +15,7 @@ window.title = "Minecraft 2D - Zombie AI"
 
 # --- Setup Camera ---
 camera.orthographic = True
-camera.fov = 10
+camera.fov = 20
 
 # Game state
 game_world = None
@@ -28,6 +28,7 @@ current_world_name = None
 current_world_type = None
 is_paused = False
 zombie_spawner = None
+chicken_spawner = None
 
 class GameInputController(Entity):
     def __init__(self):
@@ -108,6 +109,8 @@ def cleanup_game():
     mouse_catcher = None
     game_over_ui = None
     pause_ui = None
+    #zombie_spawner = None
+    #chicken_spawner = None
 
 def start_new_game(name, world_type):
     global current_world_name
@@ -126,7 +129,7 @@ def load_saved_game(name):
         back_to_menu()
 
 def launch_game_environment(world_type, save_data=None):
-    global game_world, player, mouse_catcher, game_over_ui, pause_ui, is_paused, menu, zombie_spawner, game_controller
+    global game_world, player, mouse_catcher, game_over_ui, pause_ui, is_paused, menu, zombie_spawner, game_controller, chicken_spawner
     if menu:
         try:
             menu.destroy()
@@ -173,6 +176,7 @@ def launch_game_environment(world_type, save_data=None):
     )
 
     zombie_spawner = ZombieSpawner(game_world, player)
+    chicken_spawner = ChickenSpawner(game_world, player)
 
     camera.scripts.clear()
     camera.add_script(SmoothFollow(target=player, offset=[0, 1, -30], speed=5))
@@ -186,6 +190,8 @@ def launch_game_environment(world_type, save_data=None):
 def update():
     if zombie_spawner: 
         zombie_spawner.update()
+    if chicken_spawner:
+        chicken_spawner.update()
 
 
 mouse_catcher = Entity(

@@ -44,7 +44,7 @@ class CraftingTableUI(Entity):
                 )
                 self.inv_slots_visual.append(s)
 
-        self.crafting_label = Text(parent=self, text="Crafting", x=-0.3, y=0.35, scale=1.5, color=color.white)
+        """ self.crafting_label = Text(parent=self, text="Crafting", x=-0.3, y=0.35, scale=1.5, color=color.white) """
 
         grid_start_x = -0.23
         grid_start_y = 0.276
@@ -74,7 +74,7 @@ class CraftingTableUI(Entity):
         self.craft_slots_visual.append(self.output_slot)
         
         # Arrow Visual
-        Text(parent=self, text="->", x=grid_start_x + (2.8 * craft_spacing), y=grid_start_y - craft_spacing, scale=2)
+        """ Text(parent=self, text="->", x=grid_start_x + (2.8 * craft_spacing), y=grid_start_y - craft_spacing, scale=2) """
 
         # Close Button
         Button(parent=self, text="x", color=color.red, scale=(0.05, 0.05), x=0.45, y=0.38, on_click=self.close)
@@ -324,6 +324,7 @@ class CraftingTableUI(Entity):
 
     def open(self):
         self.enabled = True
+        
         if self.inventory_ref.is_open:
             self.inventory_ref.toggle() 
             

@@ -1,459 +1,593 @@
 from ursina import *
-from config import *
+from config import * # Mengambil MOB_DESPAWN_RANGE dari sini
 import heapq
 from collections import deque
 import random
 import time
-from config import WIDTH, DEPTH
 
+# =====================================================
+# HELPER FUNCTIONS
+# =====================================================
+
+def get_neighbors(world, pos):
+    x, y = pos
+    res = []
+    for dx, dy in [(1,0), (-1,0), (1,1), (-1,1), (1,-1), (-1,-1)]:
+        nx, ny = x + dx, y + dy
+        if not (0 <= nx < WIDTH and 0 <= ny < DEPTH):
+            continue
+        # GUNAKAN 'world' YANG DIPASSING SEBAGAI ARGUMEN
+        if world.is_standable(nx, ny):
+            res.append((nx, ny))
+    return res
+
+def bfs(world, start, goal, max_steps=300):
+    q = deque([(start, [start])])
+    visited = {start}
+    steps = 0
+    while q:
+        steps += 1
+        if steps > max_steps: return []
+        curr, path = q.popleft()
+        if curr == goal: return path[1:]
+        for n in get_neighbors(world, curr):
+            if n not in visited:
+                visited.add(n)
+                q.append((n, path + [n]))
+    return []
+
+def astar(world, start, goal, max_steps=300):
+    def h(a, b): return abs(a[0]-b[0]) + abs(a[1]-b[1])
+    open_set = [(0, start)]
+    came = {}
+    g = {start: 0}
+    steps = 0
+    while open_set:
+        steps += 1
+        if steps > max_steps: return []
+        _, curr = heapq.heappop(open_set)
+        if curr == goal:
+            path = [curr]
+            while curr in came:
+                curr = came[curr]
+                path.insert(0, curr)
+            return path[1:]
+        for n in get_neighbors(world, curr):
+            ng = g[curr] + 1
+            if n not in g or ng < g[n]:
+                g[n] = ng
+                came[n] = curr
+                heapq.heappush(open_set, (ng + h(n, goal), n))
+    return []
+
+# =====================================================
+# ZOMBIE
+# =====================================================
 class Zombie(Entity):
     def __init__(self, world, player, **kwargs):
         super().__init__(
             parent=scene,
             model='quad',
-            color=color.clear, # Fisik transparan
-            origin_y=0,        # Pivot di tengah badan
+            color=color.clear, 
+            origin_y=0,
             position=kwargs.get('position', (0,0)),
+            collider='box',
             z=FG_Z
         )
-
         self.world = world
         self.player = player
-
-        # ==========================================
-        # 1. PARAMETER DINAMIS (0.9 x 1.8)
-        # ==========================================
         
-        # --- FISIK (Hitbox) ---
-        self.collider = 'box'
+        # Stats
         self.scale = (0.9, 1.8) 
-        
-        # --- VISUAL (Tampilan 1.0 x 2.0) ---
-        target_w, target_h = 1.0, 2.0
-        # Hitung skala relatif: Target / Fisik
-        self.visual_scale_relative = (target_w / self.scale_x, target_h / self.scale_y)
-        
-        self.visual = Entity(
-            parent=self,
-            scale=self.visual_scale_relative, 
-            position=(0, 0, -0.1),
-            double_sided=True 
-        )
+        self.max_health = ZOMBIE_MAX_HEALTH
+        self.health = self.max_health
+        self.walk_speed = ZOMBIE_WALK_SPEED
+        self.run_speed = ZOMBIE_RUN_SPEED
+        self.jump_force = ZOMBIE_JUMP_FORCE
+        self.gravity = GLOBAL_GRAVITY
+        self.max_fall = MAX_FALL_SPEED
+        self.y_vel = 0
+        self.grounded = False
 
-        # --- STATS ---
-        self.chase_speed = 3.5         
-        self.idle_speed = 1.5          
-        self.jump_force = 12           # Kuat untuk badan tinggi
-        self.gravity_force = 30 
-        self.max_fall_speed = 20
-        
-        # --- AI SETTINGS ---
-        self.vision_range = 8          
-        self.vertical_vision = 4       
-        self.give_up_range = 15        
-        self.wander_radius = 10        
-        self.path_update_rate = 0.20   
-        self.frustration_duration = 3.0 
-        self.max_search_steps = 400    # Batas langkah A* (Python)
-        self.idle_wait_duration = 5.0   
-
-        # --- STATE ---
+        # AI
         self.state = 'idle'
-        self.path = []      
-        self.current_path_index = 0     
+        self.path = []
+        self.idx = 0
         self.path_timer = 0
-        self.frustration_timer = 0     
-        self.idle_wait_timer = 0        
-        self.last_attack_time = 0
-        
-        # Physics Vars
-        self.y_velocity = 0
-        self.is_grounded = False
+        self.idle_timer = 0.0
+        self.attack_timer = 0.0
+        self.walk_cd_min = ZOMBIE_IDLE_MIN
+        self.walk_cd_max = ZOMBIE_IDLE_MAX
+        self.path_update_rate = ZOMBIE_PATH_UPDATE_RATE
+        self.attack_range = ZOMBIE_ATTACK_RANGE
+        self.attack_cooldown = ZOMBIE_ATTACK_COOLDOWN
+        self.damage = ZOMBIE_DAMAGE
 
+        # Visual
+        target_w, target_h = 1.0, 2.0
+        self.visual_scale_relative = (target_w / self.scale_x, target_h / self.scale_y)
+        self.visual = Entity(parent=self, scale=self.visual_scale_relative, position=(0, 0, -0.1), double_sided=True)
         self.skin()
+        print(f"[SPAWN] Zombie at {self.position}")
 
     def skin(self):
-        self.zombie_graphics = SpriteSheetAnimation('../Assets/Sprite/Zombie.png', parent=self.visual, tileset_size=(8,1), fps=6, animations={
-            'idle' : ((0,0), (0,0)),        # makes an animation from (0,0) to (0,0), a single frame
-            'walk_right' : ((1,0), (3,0)),
-            'walk_left' : ((4,0), (7,0)),
-            }
-            )
+        self.zombie_graphics = SpriteSheetAnimation('../Assets/Sprite/Zombie.png', parent=self.visual, tileset_size=(7,1), fps=6, animations={'idle':((0,0),(0,0)), 'walk_right':((1,0),(3,0)), 'walk_left':((4,0),(6,0))})
         self.zombie_graphics.play_animation('idle')
         self.current_anim_state = 'idle'
 
     def get_light_level(self):
-        x = int(round(self.x))
-        y = int(round(self.y))
-
+        x, y = int(round(self.x)), int(round(self.y))
         if 0 <= x < WIDTH and 0 <= y < DEPTH:
-            if self.world.map_data[x][y] == 0:
-                return self.world.light_map[x][y]
-            else:
-                return self.world._light_for_solid(x, y)
+            if self.world.map_data[x][y] == 0: return self.world.light_map[x][y]
+            else: return self.world._light_for_solid(x, y)
         return 0
     
     def apply_lighting(self):
-            lvl = self.get_light_level()
-            lvl = max(0, min(14, lvl))
-            brightness = 0.1 + 0.9 * (lvl / 14.0) 
-            if hasattr(self, 'zombie_graphics'):
-                self.zombie_graphics.color = color.white * brightness
+        lvl = max(0, min(14, self.get_light_level()))
+        brightness = 0.1 + 0.9 * (lvl / 14.0) 
+        if hasattr(self, 'zombie_graphics'): self.zombie_graphics.color = color.white * brightness
 
     def update(self):
-        try:
-            dt = time.dt
-            self.apply_lighting()
-            
-            # ----------------------------------
-            # 1. LOGIKA UTAMA
-            # ----------------------------------
-            self.attack_logic()
-            
-            if self.frustration_timer > 0: self.frustration_timer -= dt
-            if self.idle_wait_timer > 0: self.idle_wait_timer -= dt 
-
-            # Respawn jika jatuh ke void
-            if self.y < -20:
-                self.position = (self.player.x, self.player.y + 10)
-                self.y_velocity = 0
-                self.path = []
-
-            """ # ----------------------------------
-            # 2. VISUAL UPDATE
-            # ----------------------------------
-            if self.state == 'chase': self.visual.color = color.red
-            else: self.visual.color = color.violet 
-
-            # Flip Visual
-            if self.path and self.current_path_index < len(self.path):
-                next_node = self.path[self.current_path_index]
-                base_scale = self.visual_scale_relative[0]
-                if next_node[0] > self.x: self.visual.scale_x = base_scale
-                elif next_node[0] < self.x: self.visual.scale_x = -base_scale """
-
-            # ----------------------------------
-            # 3. AI DECISION MAKING
-            # ----------------------------------
-            manhattan_dist = abs(self.player.x - self.x) + abs(self.player.y - self.y)
-            can_see = self.check_vision()
-            
-            # Prioritas 1: Lihat Player -> Chase
-            if can_see and self.frustration_timer <= 0:
-                self.state = 'chase'
-                self.idle_wait_timer = 0
-            
-            # Prioritas 2: Player Hilang TAPI Path Masih Ada -> Lanjutkan (Persistence)
-            elif self.state == 'chase' and self.path and self.current_path_index < len(self.path):
-                self.state = 'chase'
-            
-            # Prioritas 3: Idle
-            else:
-                self.state = 'idle'
-            
-            # ----------------------------------
-            # 4. PATHFINDING MANAGER
-            # ----------------------------------
-            self.path_timer += dt
-            if self.path_timer > self.path_update_rate:
-                self.path_timer = 0
-                start_pos = (int(round(self.x)), int(round(self.y)))
-                
-                if self.is_grounded:
-                    # KASUS CHASE
-                    if self.state == 'chase':
-                        if can_see:
-                            if manhattan_dist < (self.give_up_range + 10): 
-                                target_pos = self.find_valid_target(self.player.x, self.player.y)
-                                if target_pos and start_pos != target_pos:
-                                    found_path = self.astar(start_pos, target_pos)
-                                    if found_path: 
-                                        self.path = found_path
-                                        self.current_path_index = 0 # Reset Path Index
-                                    else:
-                                        self.path = []
-                                        self.state = 'idle'
-                                        self.frustration_timer = self.frustration_duration
-                        else:
-                            pass # Lanjutkan sisa path lama
-
-                    # KASUS IDLE / WANDER
-                    elif self.state == 'idle' and (not self.path or self.current_path_index >= len(self.path)):
-                        if self.idle_wait_timer <= 0:
-                            radius = self.wander_radius
-                            path_found = False
-                            for _ in range(10): 
-                                rx = start_pos[0] + random.randint(-radius, radius)
-                                for ry in range(start_pos[1] + 2, start_pos[1] - 4, -1):
-                                    if self.is_standable(rx, ry):
-                                        new_path = self.bfs(start_pos, (rx, ry))
-                                        if new_path:
-                                            self.path = new_path
-                                            self.current_path_index = 0
-                                            path_found = True
-                                        break
-                                if path_found: break
-                            if not path_found: self.idle_wait_timer = self.idle_wait_duration
-
-            # ====================================================
-            # 5. EKSEKUSI GERAKAN (PHYSICS)
-            # ====================================================
-            
-            move_dir_x = 0
-            is_jumping = False
-            
-            # A. Tentukan Arah Berdasarkan Path Node
-            if self.path and self.current_path_index < len(self.path):
-                next_step = self.path[self.current_path_index]
-                
-                # Logic Lompat
-                if next_step[1] > self.y + 0.1:
-                    is_jumping = True
-                    if self.is_grounded: self.y_velocity = self.jump_force
-                
-                diff_x = next_step[0] - self.x
-                
-                # Toleransi agar tidak bergetar (0.15)
-                if abs(diff_x) > 0.15: 
-                    move_dir_x = 1 if diff_x > 0 else -1
-                else:
-                    # Cek apakah Y juga sudah sampai / sudah terlewati
-                    if abs(next_step[1] - self.y) < 0.5 or self.y > next_step[1]:
-                        self.current_path_index += 1 
-            
-            # Jika Path Habis
-            elif self.path and self.current_path_index >= len(self.path):
-                if self.state == 'idle':
-                    self.idle_wait_timer = self.idle_wait_duration
-                self.path = [] # Clear path
-
-            # ----------------------------------
-            # 5.1. ANIMATION CONTROL (NEW LOGIC)
-            # ----------------------------------
-            if move_dir_x > 0:
-                # Moving Right
-                if self.current_anim_state != 'walk_right':
-                    self.zombie_graphics.play_animation('walk_right')
-                    self.current_anim_state = 'walk_right'
-                # Ensure visual scale is positive (facing right)
-                self.visual.scale_x = abs(self.visual_scale_relative[0])
-                
-            elif move_dir_x < 0:
-                # Moving Left
-                if self.current_anim_state != 'walk_left':
-                    self.zombie_graphics.play_animation('walk_left')
-                    self.current_anim_state = 'walk_left'
-                # Ensure visual scale is negative (facing left)
-                self.visual.scale_x = abs(self.visual_scale_relative[0])
-                
-            else:
-                # Not moving horizontally (Standing/Jumping up)
-                if self.current_anim_state != 'idle':
-                    self.zombie_graphics.play_animation('idle')
-                    self.current_anim_state = 'idle'
-            
-            # B. Raycast Movement (Horizontal)
-            if move_dir_x != 0:
-                hit_wall = False
-                dist_x = (self.scale_x / 2) + 0.1
-                
-                # Cek 3 titik (Bawah, Tengah, Atas)
-                offsets_y = [-0.8, 0, 0.8] 
-                
-                for off_y in offsets_y:
-                    # FIX: Abaikan kaki saat lompat biar bisa naik
-                    if is_jumping and off_y < 0.5: continue 
-                    
-                    origin = self.position + Vec3(0, off_y, 0)
-                    hit = raycast(origin, Vec3(move_dir_x, 0, 0), distance=dist_x, ignore=(self, self.visual), debug=False)
-                    if hit.hit:
-                        hit_wall = True
-                        break
-                
-                if not hit_wall:
-                    current_speed = self.chase_speed if self.state == 'chase' else self.idle_speed
-                    self.x += move_dir_x * current_speed * dt
-
-            # C. Gerak Vertikal & Gravitasi
-            ray_origin_y = 0 
-            ray_direction = Vec3(0, -1, 0)
-            ray_dist = (self.scale_y / 2) + 0.1 
-            margin_x = 0.05
-            half_w = (self.scale_x / 2) - margin_x
-            
-            pos_left = self.position + Vec3(-half_w, ray_origin_y, 0)
-            pos_right = self.position + Vec3(half_w, ray_origin_y, 0)
-            
-            hit_l = raycast(pos_left, ray_direction, distance=ray_dist, ignore=(self, self.visual))
-            hit_r = raycast(pos_right, ray_direction, distance=ray_dist, ignore=(self, self.visual))
-            
-            if hit_l.hit or hit_r.hit:
-                self.is_grounded = True
-                
-                # Logic Snap to Ground
-                floor_y = -9999
-                if hit_l.hit: floor_y = max(floor_y, hit_l.world_point.y)
-                if hit_r.hit: floor_y = max(floor_y, hit_r.world_point.y)
-                target_y = floor_y + (self.scale_y / 2)
-                
-                if self.y_velocity <= 0:
-                    self.y = target_y
-                    self.y_velocity = 0
-            else:
-                self.is_grounded = False
-                self.y_velocity -= self.gravity_force * dt
-                if self.y_velocity < -self.max_fall_speed: self.y_velocity = -self.max_fall_speed
-            
-            # Cek Kepala (Atap)
-            if self.y_velocity > 0:
-                head_origin = self.position + Vec3(0, self.scale_y/2 - 0.1, 0)
-                hit_head = raycast(head_origin, Vec3(0,1,0), distance=0.2, ignore=(self, self.visual))
-                if hit_head.hit: self.y_velocity = 0
-
-            self.y += self.y_velocity * dt
-
-        except Exception as e:
-            self.path = []
-
-    # ==========================================
-    # HELPER METHODS (PURE PYTHON)
-    # ==========================================
-
-    def attack_logic(self):
-        diff_x = abs(self.player.x - self.x)
-        diff_y = abs(self.player.y - self.y)
-        # Range attack 8 arah
-        if diff_x < 1.6 and diff_y < 1.9: 
-            import time as t_module
-            current_time = t_module.time()
-            if current_time - self.last_attack_time > ZOMBIE_ATTACK_COOLDOWN:
-                self.last_attack_time = current_time
-                self.player.take_damage(ZOMBIE_DAMAGE)
-                
-                direction = 1 if self.player.x > self.x else -1
-                wall_behind = raycast(self.player.position, Vec3(direction,0,0), distance=1.0, ignore=(self, self.visual, self.player))
-                
-                if not wall_behind.hit: 
-                    self.player.x += direction * 0.5
-                self.player.y += 0.5
-
-    def find_valid_target(self, px, py):
-        tx, ty = int(round(px)), int(round(py))
-        if self.is_standable(tx, ty): return (tx, ty)
-        if self.is_standable(tx, ty-1): return (tx, ty-1)
-        return None
-
-    def check_vision(self):
-        dist = distance(self.position, self.player.position)
-        if dist > self.vision_range: return False 
-        if abs(self.player.y - self.y) > self.vertical_vision: return False
+        dt = time.dt
         
-        eye_pos = self.position + Vec3(0, 0.6, 0)
-        target_eye = self.player.position + Vec3(0, 0.6, 0)
-        direction = (target_eye - eye_pos).normalized()
-        hit = raycast(eye_pos, direction, distance=self.vision_range, ignore=(self, self.visual), debug=False)
-        if hit.hit:
-            if distance(hit.world_point, target_eye) < 1.5: return True
-            return False
-        return True
-    
-    # --- PATHFINDING PYTHON STANDARD ---
-    def is_standable(self, x, y):
-        # Cek Kaki, Kepala, dan Lantai
-        return ((x, y) not in self.world.block_positions) and \
-               ((x, y+1) not in self.world.block_positions) and \
-               ((x, y-1) in self.world.block_positions)
+        # --- DESPAWN LOGIC (MENGGUNAKAN CONFIG) ---
+        if distance(self.position, self.player.position) > MOB_DESPAWN_RANGE:
+            destroy(self)
+            return
 
-    def get_neighbors(self, pos):
-        x, y = pos; moves = []
-        for dx, dy in [(1,0),(-1,0),(1,1),(-1,1),(1,-1),(-1,-1)]:
-            nx, ny = x+dx, y+dy
-            if not (0<=nx<WIDTH and 0<=ny<DEPTH): continue
-            
-            if (nx,ny) in self.world.block_positions: continue
-            if (nx,ny+1) in self.world.block_positions: continue
-            
-            has_floor = (nx,ny-1) in self.world.block_positions
-            if dy<=0 and not has_floor: continue
-            if dy==1 and (x,y+2) in self.world.block_positions: continue
-            
-            moves.append((nx,ny))
-        return moves
+        self.apply_lighting()
+        self.ai(dt)
+        self.move(dt)
 
-    def heuristic(self, a, b): return abs(a[0] - b[0]) + abs(a[1] - b[1])
-    def reconstruct_path(self, cf, cur):
-        p = [cur]; 
-        while cur in cf: cur = cf[cur]; p.insert(0, cur)
-        return p[1:]
-    
-    def astar(self, start, goal):
-        open_set = []; heapq.heappush(open_set, (0, start)); came_from = {}; g_score = {start:0}; f_score = {start:self.heuristic(start, goal)}; steps=0
-        while open_set:
-            steps+=1; 
-            if steps>self.max_search_steps: return []
-            current = heapq.heappop(open_set)[1]
-            if current == goal: return self.reconstruct_path(came_from, current)
-            for neighbor in self.get_neighbors(current):
-                tg = g_score[current]+1
-                if neighbor not in g_score or tg < g_score[neighbor]: came_from[neighbor]=current; g_score[neighbor]=tg; f_score[neighbor]=tg+self.heuristic(neighbor, goal); heapq.heappush(open_set, (f_score[neighbor], neighbor))
-        return []
+    def take_damage(self, amount):
+        self.health -= amount
+        if hasattr(self, 'zombie_graphics'):
+            self.zombie_graphics.color = color.red
+            invoke(setattr, self.zombie_graphics, 'color', color.white, delay=0.2)
         
-    def bfs(self, start, goal):
-        q=deque([(start,[start])]); v=set([start]); steps=0
-        while q:
-            steps+=1; 
-            if steps>self.max_search_steps: return []
-            (curr, p) = q.popleft()
-            if curr==goal: return p[1:]
-            for n in self.get_neighbors(curr):
-                if n not in v: v.add(n); q.append((n, p+[n]))
-        return []
-    
-class ZombieSpawner:
-    def __init__(self, world, player):
+        print(f"[ZOMBIE] Hit! HP: {self.health}")
+        dir_to_player = self.x - self.player.x
+        if dir_to_player != 0: self.x += (dir_to_player / abs(dir_to_player)) * 0.5
+        if self.health <= 0: self.die()
+
+    def die(self):
+        print("[ZOMBIE] Died")
+        destroy(self)
+
+    def attack_player(self):
+        self.attack_timer = self.attack_cooldown
+        print(f"[ZOMBIE] Attacking Player for {self.damage} dmg!")
+        if hasattr(self.player, 'take_damage'): self.player.take_damage(self.damage)
+
+        push_dir = 1 if self.player.x > self.x else -1
+        max_push_dist = 0.8
+        check_offsets_y = [0.1, 0.9, 1.7] 
+        safe_push_dist = max_push_dist
+        
+        for off_y in check_offsets_y:
+            origin = self.player.position + Vec3(0, off_y, 0)
+            hit = raycast(origin, Vec3(push_dir, 0, 0), distance=max_push_dist + 0.1, traverse_target=self.world, ignore=(self, self.player, self.player.visual))
+            if hit.hit:
+                dist_to_wall = hit.distance - 0.2
+                if dist_to_wall < 0: dist_to_wall = 0
+                if dist_to_wall < safe_push_dist: safe_push_dist = dist_to_wall
+
+        if safe_push_dist > 0.1: self.player.x += push_dir * safe_push_dist
+        head_hit = raycast(self.player.position + Vec3(0, 1.8, 0), Vec3(0,1,0), distance=0.5, traverse_target=self.world)
+        if not head_hit.hit: self.player.y_velocity = 6; self.player.is_grounded = False
+
+    def ai(self, dt):
+        if self.idle_timer > 0: self.idle_timer -= dt
+        if self.attack_timer > 0: self.attack_timer -= dt
+        self.path_timer += dt
+        dist = abs(self.player.x - self.x) + abs(self.player.y - self.y)
+
+        if dist <= self.attack_range:
+            self.path = [] 
+            if self.attack_timer <= 0: self.attack_player()
+            return
+
+        self.state = 'chase' if dist < 10 else 'idle'
+        if self.path_timer > self.path_update_rate:
+            self.path_timer = 0
+            start = (round(self.x), round(self.y))
+            if self.state == 'chase':
+                tgt = (round(self.player.x), round(self.player.y))
+                # FIX: Gunakan self.world
+                if self.world.is_standable(tgt[0], tgt[1]):
+                    p = astar(self.world, start, tgt)
+                    if p: self.path = p; self.idx = 0
+            elif self.state == 'idle':
+                if self.idx >= len(self.path): self.path = []; self.idx = 0
+                if not self.path and self.idle_timer <= 0:
+                    rx = start[0] + random.randint(-8, 8)
+                    for ry in range(start[1]+2, start[1]-3, -1):
+                        # FIX: Gunakan self.world
+                        if self.world.is_standable(rx, ry):
+                            p = bfs(self.world, start, (rx, ry))
+                            if p: self.path = p; self.idx = 0; break
+
+    def move(self, dt):
+        move_x = 0
+        check_limit = 0
+        while self.path and self.idx < len(self.path) and check_limit < 3:
+            check_limit += 1
+            tx, ty = self.path[self.idx]
+            if ty > self.y + 0.1 and self.grounded: self.y_vel = self.jump_force
+            dx = tx - self.x
+            if abs(dx) > 0.15:
+                move_x = 1 if dx > 0 else -1
+                break 
+            else:
+                if abs(ty - self.y) < 0.5 or self.y > ty: self.idx += 1
+                else: break
+
+        if move_x != 0:
+            spd = self.run_speed if self.state == 'chase' else self.walk_speed
+            self.x += move_x * spd * dt
+        
+        # VISUAL LOGIC
+        if move_x > 0: # KANAN
+            if self.current_anim_state != 'walk_right':
+                self.zombie_graphics.play_animation('walk_right')
+                self.current_anim_state = 'walk_right'
+            self.visual.scale_x = abs(self.visual_scale_relative[0])
+            
+        elif move_x < 0: # KIRI
+            if self.current_anim_state != 'walk_left':
+                self.zombie_graphics.play_animation('walk_left')
+                self.current_anim_state = 'walk_left'
+            self.visual.scale_x = abs(self.visual_scale_relative[0])
+            
+        else:
+            if self.current_anim_state != 'idle':
+                self.zombie_graphics.play_animation('idle')
+                self.current_anim_state = 'idle'
+            self.visual.scale_x = abs(self.visual_scale_relative[0])
+        
+        hit = raycast(self.position, Vec3(0,-1,0), distance=(self.scale_y/2)+0.1, traverse_target=self.world, ignore=(self,))
+        is_ground = (hit.hit and hasattr(hit.entity, 'solid') and hit.entity.solid)
+        if is_ground:
+            self.grounded = True
+            if self.y_vel <= 0: self.y = hit.world_point.y + self.scale_y/2; self.y_vel = 0
+        else:
+            self.grounded = False
+            self.y_vel -= self.gravity * dt
+            self.y_vel = max(self.y_vel, -self.max_fall)
+        self.y += self.y_vel * dt
+
+
+# =====================================================
+# CHICKEN
+# =====================================================
+class Chicken(Entity):
+    def __init__(self, world, player, **kwargs):
+        super().__init__(
+            parent=scene,
+            model='quad',
+            color=color.red,
+            origin_y=0,
+            position=kwargs.get('position', (0,0)),
+            scale=(0.8, 0.8),
+            collider='box',
+            z=FG_Z
+        )
         self.world = world
         self.player = player
-        self.timer = 0
-        self.spawn_interval = 3.0
-        self.min_light = 4
-        self.spawn_radius = 10
-        self.max_attempts = 30
+        self.hp = CHICKEN_MAX_HEALTH
+        self.walk_speed = CHICKEN_WALK_SPEED
+        self.run_speed = CHICKEN_RUN_SPEED
+        self.jump_force = CHICKEN_JUMP_FORCE
+        self.gravity = GLOBAL_GRAVITY
+        self.max_fall = MAX_FALL_SPEED
+        self.y_vel = 0
+        self.grounded = False
+        self.state = 'idle'
+        self.path = []
+        self.idx = 0
+        self.flee_timer = 0
+        self.flee_duration = CHICKEN_FLEE_DURATION
+        self.idle_timer = 0.0
+        self.walk_cd_min = CHICKEN_IDLE_MIN
+        self.walk_cd_max = CHICKEN_IDLE_MAX
+        print(f"[SPAWN] Chicken at {self.position}")
 
     def update(self):
-        self.timer += time.dt
-        if self.timer >= self.spawn_interval:
-            self.timer = 0
-            self.try_spawn()
-
-    def try_spawn(self):
-        px, py = int(self.player.x), int(self.player.y)
-
-        for _ in range(self.max_attempts):
-            dx = random.randint(-self.spawn_radius, self.spawn_radius)
-            dy = random.randint(-self.spawn_radius, self.spawn_radius)
-
-            if abs(dx) + abs(dy) < self.spawn_radius - 2:
-                continue
-
-            x = px + dx
-            y = py + dy
-
-            if not (0 <= x < WIDTH and 0 <= y < DEPTH):
-                continue
-
-            # 1. Harus gelap
-            if self.world.light_map[x][y] > self.min_light:
-                continue
-
-            # 2. Harus bisa berdiri
-            if not self.world.is_standable(x, y):
-                continue
-
-            # 3. Spawn zombie
-            Zombie(
-                world=self.world,
-                player=self.player,
-                position=(x, y)
-            )
-            print(f"[SPAWN] Zombie at ({x},{y}) light={self.world.light_map[x][y]}")
+        dt = time.dt
+        
+        # --- DESPAWN LOGIC (MENGGUNAKAN CONFIG) ---
+        if distance(self.position, self.player.position) > MOB_DESPAWN_RANGE:
+            if hasattr(self, 'chicken_graphics'):
+                self.chicken_graphics.animations = []
+            destroy(self)
             return
+
+        self.ai(dt)
+        self.move(dt)
+
+    def ai(self, dt):
+        if self.idle_timer > 0: self.idle_timer -= dt
+        if self.flee_timer > 0: self.flee_timer -= dt
+        if self.path and self.idx >= len(self.path): self.path = []; self.idx = 0
+        if self.state == 'flee':
+            if self.flee_timer <= 0:
+                self.state = 'idle'
+                self.idle_timer = random.uniform(self.walk_cd_min, self.walk_cd_max)
+            elif not self.path: self.run_away()
+        elif self.state == 'idle':
+            if not self.path and self.idle_timer <= 0: self.random_walk()
+        elif self.state == 'walk':
+            if not self.path:
+                self.state = 'idle'
+                self.idle_timer = random.uniform(self.walk_cd_min, self.walk_cd_max)
+
+    def take_damage(self, dmg):
+        self.hp -= dmg
+        self.blink(color.red, duration=0.2)
+        print(f"[CHICKEN] Ouch! HP: {self.hp}")
+        if self.hp <= 0: destroy(self); return
+        self.state = 'flee'
+        self.flee_timer = self.flee_duration
+        self.path = []; self.idx = 0
+        self.run_away()
+
+    def random_walk(self):
+        start = (round(self.x), round(self.y))
+        for _ in range(6):
+            rx = start[0] + random.randint(-6, 6)
+            for ry in range(start[1]+2, start[1]-3, -1):
+                # FIX: Gunakan self.world
+                if self.world.is_standable(rx, ry):
+                    p = bfs(self.world, start, (rx, ry))
+                    if p: self.path = p; self.idx = 0; self.state = 'walk'; return
+        step = random.choice([-1,1])
+        # FIX: Gunakan self.world
+        if self.world.is_standable(start[0]+step, start[1]):
+            self.path = [(start[0]+step, start[1])]; self.idx = 0; self.state = 'walk'
+
+    def run_away(self):
+        start = (round(self.x), round(self.y))
+        
+        primary_dir = 1 if self.player.x < self.x else -1
+        directions_to_try = [primary_dir, -primary_dir]
+        
+        max_dist = CHICKEN_FLEE_DISTANCE
+        min_dist = 2 
+        
+        for try_dir in directions_to_try:
+            for dist in range(max_dist, min_dist - 1, -1):
+                target_x = round(self.x + (try_dir * dist))
+                
+                if not (0 <= target_x < WIDTH): continue
+                
+                start_y_scan = round(self.y) + 8  
+                end_y_scan = round(self.y) - 8
+                
+                for ty in range(start_y_scan, end_y_scan, -1):
+                    if not (0 <= ty < DEPTH): continue
+                    
+                    # FIX: Gunakan self.world
+                    if self.world.is_standable(target_x, ty):
+                        path = bfs(self.world, start, (target_x, ty))
+                        if path:
+                            self.path = path
+                            self.idx = 0
+                            print(f"[CHICKEN] Fleeing to ({target_x}, {ty})")
+                            return
+                        
+        print("[CHICKEN] Cornered! Panic random walk.")
+        self.random_walk()
+
+    def move(self, dt):
+        move_x = 0
+        if self.path and self.idx < len(self.path):
+            tx, ty = self.path[self.idx]
+            if ty > self.y + 0.1 and self.grounded: self.y_vel = self.jump_force
+            dx = tx - self.x
+            if abs(dx) > 0.15: move_x = 1 if dx > 0 else -1
+            else: self.idx += 1
+        else: self.path = []; self.idx = 0
+        if move_x != 0:
+            spd = self.run_speed if self.state == 'flee' else self.walk_speed
+            self.x += move_x * spd * dt
+        
+        hit = raycast(self.position, Vec3(0,-1,0), distance=(self.scale_y/2)+0.1, traverse_target=self.world, ignore=(self,))
+        is_ground = (hit.hit and hasattr(hit.entity, 'solid') and hit.entity.solid)
+        if is_ground:
+            self.grounded = True
+            if self.y_vel <= 0: self.y = hit.world_point.y + self.scale_y/2; self.y_vel = 0
+        else:
+            self.grounded = False
+            self.y_vel -= self.gravity * dt
+            self.y_vel = max(self.y_vel, -self.max_fall)
+        self.y += self.y_vel * dt
+
+# =====================================================
+# CHICKEN
+# =====================================================
+class Chicken(Entity):
+    def __init__(self, world, player, **kwargs):
+        super().__init__(
+            parent=scene,
+            texture='../Assets/Sprite/Ayam.png',
+            color=color.red,
+            origin_y=0,
+            position=kwargs.get('position', (0,0)),
+            scale=(0.8, 0.8),
+            collider='box',
+            z=FG_Z
+        )
+        self.world = world
+        self.player = player
+        self.hp = CHICKEN_MAX_HEALTH
+        self.walk_speed = CHICKEN_WALK_SPEED
+        self.run_speed = CHICKEN_RUN_SPEED
+        self.jump_force = CHICKEN_JUMP_FORCE
+        self.gravity = GLOBAL_GRAVITY
+        self.max_fall = MAX_FALL_SPEED
+        self.y_vel = 0
+        self.grounded = False
+        self.state = 'idle'
+        self.path = []
+        self.idx = 0
+        self.flee_timer = 0
+        self.flee_duration = CHICKEN_FLEE_DURATION
+        self.idle_timer = 0.0
+        self.walk_cd_min = CHICKEN_IDLE_MIN
+        self.walk_cd_max = CHICKEN_IDLE_MAX
+        print(f"[SPAWN] Chicken at {self.position}")
+
+    def skin(self):
+        self.chicken_graphics = SpriteSheetAnimation('../Assets/Sprite/chicken.png', parent=self.visual, tileset_size=(6,1), fps=6, animations={
+            'idle':((0,0),(0,0)), 
+            'walk_right':((0,0),(2,0)), 
+            'walk_left':((3,0),(5,0))})
+        self.chicken_graphics.play_animation('idle')
+        self.current_anim_state = 'idle'
+
+    def update(self):
+        dt = time.dt
+        
+        # --- DESPAWN LOGIC (MENGGUNAKAN CONFIG) ---
+        if distance(self.position, self.player.position) > MOB_DESPAWN_RANGE:
+            if hasattr(self, 'chicken_graphics'):
+                self.chicken_graphics.animations = []
+                destroy(self)
+            return
+
+        self.ai(dt)
+        self.move(dt)
+
+    def ai(self, dt):
+        if self.idle_timer > 0: self.idle_timer -= dt
+        if self.flee_timer > 0: self.flee_timer -= dt
+        if self.path and self.idx >= len(self.path): self.path = []; self.idx = 0
+        if self.state == 'flee':
+            if self.flee_timer <= 0:
+                self.state = 'idle'
+                self.idle_timer = random.uniform(self.walk_cd_min, self.walk_cd_max)
+            elif not self.path: self.run_away()
+        elif self.state == 'idle':
+            if not self.path and self.idle_timer <= 0: self.random_walk()
+        elif self.state == 'walk':
+            if not self.path:
+                self.state = 'idle'
+                self.idle_timer = random.uniform(self.walk_cd_min, self.walk_cd_max)
+
+    def take_damage(self, dmg):
+        self.hp -= dmg
+        self.blink(color.red, duration=0.2)
+        print(f"[CHICKEN] Ouch! HP: {self.hp}")
+        if self.hp <= 0: destroy(self); return
+        self.state = 'flee'
+        self.flee_timer = self.flee_duration
+        self.path = []; self.idx = 0
+        self.run_away()
+
+    def random_walk(self):
+        start = (round(self.x), round(self.y))
+        for _ in range(6):
+            rx = start[0] + random.randint(-6, 6)
+            for ry in range(start[1]+2, start[1]-3, -1):
+                # FIX: Gunakan self.world
+                if self.world.is_standable(rx, ry):
+                    p = bfs(self.world, start, (rx, ry))
+                    if p: self.path = p; self.idx = 0; self.state = 'walk'; return
+        step = random.choice([-1,1])
+        # FIX: Gunakan self.world
+        if self.world.is_standable(start[0]+step, start[1]):
+            self.path = [(start[0]+step, start[1])]; self.idx = 0; self.state = 'walk'
+
+    def run_away(self):
+        start = (round(self.x), round(self.y))
+        
+        primary_dir = 1 if self.player.x < self.x else -1
+        directions_to_try = [primary_dir, -primary_dir]
+        
+        max_dist = CHICKEN_FLEE_DISTANCE
+        min_dist = 2 
+        
+        for try_dir in directions_to_try:
+            for dist in range(max_dist, min_dist - 1, -1):
+                target_x = round(self.x + (try_dir * dist))
+                
+                if not (0 <= target_x < WIDTH): continue
+                
+                start_y_scan = round(self.y) + 8  
+                end_y_scan = round(self.y) - 8
+                
+                for ty in range(start_y_scan, end_y_scan, -1):
+                    if not (0 <= ty < DEPTH): continue
+                    
+                    # FIX: Gunakan self.world
+                    if self.world.is_standable(target_x, ty):
+                        path = bfs(self.world, start, (target_x, ty))
+                        if path:
+                            self.path = path
+                            self.idx = 0
+                            print(f"[CHICKEN] Fleeing to ({target_x}, {ty})")
+                            return
+                        
+        print("[CHICKEN] Cornered! Panic random walk.")
+        self.random_walk()
+
+    def move(self, dt):
+        move_x = 0
+        if self.path and self.idx < len(self.path):
+            tx, ty = self.path[self.idx]
+            if ty > self.y + 0.1 and self.grounded: self.y_vel = self.jump_force
+            dx = tx - self.x
+            if abs(dx) > 0.15: move_x = 1 if dx > 0 else -1
+            else: self.idx += 1
+        else: self.path = []; self.idx = 0
+        if move_x != 0:
+            spd = self.run_speed if self.state == 'flee' else self.walk_speed
+            self.x += move_x * spd * dt
+        
+        hit = raycast(self.position, Vec3(0,-1,0), distance=(self.scale_y/2)+0.1, traverse_target=self.world, ignore=(self,))
+        is_ground = (hit.hit and hasattr(hit.entity, 'solid') and hit.entity.solid)
+        if is_ground:
+            self.grounded = True
+            if self.y_vel <= 0: self.y = hit.world_point.y + self.scale_y/2; self.y_vel = 0
+        else:
+            self.grounded = False
+            self.y_vel -= self.gravity * dt
+            self.y_vel = max(self.y_vel, -self.max_fall)
+        self.y += self.y_vel * dt
+
+# =====================================================
+# SPAWNERS
+# =====================================================
+class ZombieSpawner:
+    def __init__(self, world, player):
+        self.world = world; self.player = player; self.timer = 0; self.spawn_rate = ZOMBIE_SPAWN_RATE
+    def update(self):
+        self.timer += time.dt
+        if self.timer >= self.spawn_rate: self.timer = 0; self.spawn()
+    def spawn(self):
+        px, py = round(self.player.x), round(self.player.y)
+        for _ in range(30):
+            dx = random.randint(-12,12); dy = random.randint(-6,6)
+            if abs(dx) < 6: continue
+            x, y = px+dx, py+dy
+            if not (0<=x<WIDTH and 0<=y<DEPTH): continue
+            if self.world.light_map[x][y] > 4: continue
+            # FIX: Gunakan self.world.is_standable
+            if self.world.is_standable(x, y): Zombie(self.world, self.player, position=(x,y)); return
+
+class ChickenSpawner:
+    def __init__(self, world, player):
+        self.world = world; self.player = player; self.timer = 0; self.spawn_rate = CHICKEN_SPAWN_RATE
+    def update(self):
+        self.timer += time.dt
+        if self.timer >= self.spawn_rate: self.timer = 0; self.spawn()
+    def spawn(self):
+        px, py = round(self.player.x), round(self.player.y)
+        for _ in range(20):
+            dx = random.randint(-20,20); dy = random.randint(-6,6)
+            if abs(dx) < 5: continue
+            x, y = px+dx, py+dy
+            if not (0<=x<WIDTH and 0<=y<DEPTH): continue
+            if self.world.light_map[x][y] <= 11: continue
+            # FIX: Gunakan self.world.is_standable
+            if self.world.is_standable(x, y): Chicken(self.world, self.player, position=(x,y)); return

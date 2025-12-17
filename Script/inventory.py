@@ -36,7 +36,8 @@ class Inventory(Entity):
             s = self._create_slot(
                 parent=self.hotbar_parent, 
                 index=i, 
-                x=(i - 4) * 0.09 
+                x=(i - 4) * 0.082,
+                y=0.12
             )
             self.hotbar_slots.append(s)
             self.slots.append(s)
@@ -463,8 +464,8 @@ class Inventory(Entity):
     def highlight_selected_hotbar(self):
         for i, slot in enumerate(self.hotbar_slots):
             if i == self.selected_index:
-                slot.color = color.white
-                slot.scale = 0.09 
+                slot.color = color.rgba(1,1,1,0.5)
+                slot.scale = 0.08 
             else:
                 slot.color = color.rgba(1,1,1,0.2)
                 slot.scale = 0.08
