@@ -1,32 +1,141 @@
 from ursina import color
 
-# --- WORLD ---
-WIDTH = 60
-DEPTH = 40
-BASE_HEIGHT = 20
-DIRT_LAYER_THICKNESS = 4
+# --- WORLD SIZE ---
+WIDTH = 384
+DEPTH = 256
+BASE_HEIGHT = 40
+DIRT_LAYER_THICKNESS = 5
 
-# --- BLOK ID ---
+# --- RENDER SETTINGS ---
+VIEW_DISTANCE_X = 22  
+VIEW_DISTANCE_Y = 16 
+
+# --- BLOK ID (BLOCKS - PLACEABLE) ---
 GRASS = 1
 DIRT = 2
 STONE = 3
 BEDROCK = 4
+SAND = 5
+COAL = 6    # Ubah nama agar jelas ini ORE
+IRON = 7    # Ubah nama agar jelas ini ORE
+DIAMOND = 8 # Ubah nama agar jelas ini ORE
+GRASS_PLANT = 9
+LOG = 10     
+LEAVES = 11  
+GLASS = 12
+CRAFTING_TABLE = 13
+PLANK = 14
+BED_BLOCK = 15 # Blok tempat tidur yang sudah ditaruh (Head/Foot bisa kompleks, kita simplifikasi 1 blok dulu atau item saja)
+
+# --- ITEM ID (ITEMS - NON-PLACEABLE / SPECIAL) ---
+STICK = 100
+TORCH = 101
+BED_ITEM = 102 # Item tempat tidur di tangan
+RAW_CHICKEN = 103
+COOKED_CHICKEN = 104
+FEATHER = 105
+
+# MINING DROPS (Non-placeable items)
+COAL_ITEM = 150
+IRON_INGOT = 151
+DIAMOND_GEM = 152
+
+# TOOLS - WOOD
+WOODEN_SWORD = 200
+WOODEN_SHOVEL = 201
+WOODEN_PICKAXE = 202
+WOODEN_AXE = 203
+
+# TOOLS - WOODEN
+WOODEN_SWORD = 210
+WOODEN_SHOVEL = 211
+WOODEN_PICKAXE = 212
+WOODEN_AXE = 213
+
+# TOOLS - IRON
+IRON_SWORD = 220
+IRON_SHOVEL = 221
+IRON_PICKAXE = 222
+IRON_AXE = 223
+
+# TOOLS - DIAMOND
+DIAMOND_SWORD = 230
+DIAMOND_SHOVEL = 231
+DIAMOND_PICKAXE = 232
+DIAMOND_AXE = 2333
+
+# ARMOR - IRON
+IRON_HELMET = 300
+IRON_CHESTPLATE = 301
+IRON_LEGGINGS = 302
+IRON_BOOTS = 30
+
+# ARMOR - DIAMOND
+DIAMOND_HELMET = 310
+DIAMOND_CHESTPLATE = 311
+DIAMOND_LEGGINGS = 312
+DIAMOND_BOOTS = 313
+
 
 # --- DATABASE BLOCK ---
 BLOCK_DATA = {
-    GRASS: {'color': color.green, 'name': 'Grass'},
-    DIRT:  {'color': color.orange.tint(-0.3), 'name': 'Dirt'},
-    STONE: {'color': color.gray, 'name': 'Stone'},
-    BEDROCK: {'color': color.black, 'name': 'Bedrock'},
+    GRASS: {'name': 'Grass', 'texture': '../Assets/Textures/grass.png', 'solid': True},
+    DIRT:  {'name': 'Dirt', 'texture': '../Assets/Textures/dirt.png', 'solid': True},
+    STONE: {'name': 'Stone', 'texture': '../Assets/Textures/cobblestone.png', 'solid': True},
+    BEDROCK: {'name': 'Bedrock', 'texture': '../Assets/Textures/bedrock.png', 'solid': True},
+    SAND: {'name': 'Sand', 'texture': '../Assets/Textures/sand.png', 'solid': True},
+    COAL: {'name': 'Coal', 'texture': '../Assets/Textures/coal_ore.png', 'solid': True},
+    IRON: {'name': 'Iron', 'texture': '../Assets/Textures/iron_ore.png', 'solid': True},
+    DIAMOND: {'name': 'Diamond', 'texture': '../Assets/Textures/diamond_ore.png', 'solid': True},
+    TORCH: {'name': 'Torch', 'texture': '../Assets/Icons/Furniture/Torch.png', 'emits_light': True, 'solid': False, 'light_level': 15},
+    GRASS_PLANT: {'name': 'Grass Plant', 'texture': '../Assets/Icons/Block/Grass.png', 'double_sided': True, 'solid': True},
+    LOG: {'name': 'Oak Log',  'texture': '../Assets/Textures/log.png', 'solid': True},           
+    LEAVES: {'name': 'Oak Leaves', 'texture': '../Assets/Textures/leaves.png', 'double_sided': True, 'solid': True},
+    CRAFTING_TABLE: {'name': 'Crafting Table', 'texture': '../Assets/Textures/crafting_table.png', 'solid': True},
+    PLANK: {'name': 'Oak Plank', 'texture': '../Assets/Textures/plank.png', 'solid': True},
+    BED_BLOCK: {'name': 'Bed', 'texture': '../Assets/Textures/bed_side.png', 'solid': True}, # Visual di world
+    STICK: {'name': 'Stick', 'texture': '../Assets/Icons/Materials/Stick.png', 'solid': False},
+    BED_ITEM: {'name': 'Bed Item', 'texture': '../Assets/Icons/Furniture/Red_Bed.png', 'solid': False}, # Item tempat tidur di tangan
+    RAW_CHICKEN: {'name': 'Raw Chicken', 'texture': '../Assets/Icons/Item/Raw_Chicken.png', 'solid': False},
+    COOKED_CHICKEN: {'name': 'Cooked Chicken', 'texture': '../Assets/Icons/Item/Cooked_Chicken.png', 'solid': False},
+    FEATHER: {'name': 'Feather', 'texture': '../Assets/Icons/Item/Feather.png', 'solid': False},
+
+    DIAMOND_GEM: {'name': 'Diamond Gem', 'texture': '../Assets/Icons/Materials/Diamond.png', 'solid': False},
+    COAL_ITEM: {'name': 'Coal Item', 'texture': '../Assets/Icons/Materials/Coal.png', 'solid': False},
+    IRON_INGOT: {'name': 'Iron Ingot', 'texture': '../Assets/Icons/Materials/Iron_Ingot.png', 'solid': False},
+
+    DIAMOND_HELMET: {'name': 'Diamond Helmet', 'texture': '../Assets/Icons/Equipments/Diamond_Helmet.png', 'solid': False},
+    DIAMOND_CHESTPLATE: {'name': 'Diamond Chestplate', 'texture': '../Assets/Icons/Equipments/Diamond_Chestplate.png', 'solid': False},
+    DIAMOND_LEGGINGS: {'name': 'Diamond Leggings', 'texture': '../Assets/Icons/Equipments/Diamond_Leggings.png', 'solid': False},
+    DIAMOND_BOOTS: {'name': 'Diamond Boots', 'texture': '../Assets/Icons/Equipments/Diamond_Boots.png', 'solid': False},
+    IRON_HELMET: {'name': 'Iron Helmet', 'texture': '../Assets/Icons/Equipments/Iron_Helmet.png', 'solid': False},
+    IRON_CHESTPLATE: {'name': 'Iron Chestplate', 'texture': '../Assets/Icons/Equipments/Iron_Chestplate.png', 'solid': False},
+    IRON_LEGGINGS: {'name': 'Iron Leggings', 'texture': '../Assets/Icons/Equipments/Iron_Leggings.png', 'solid': False},
+    IRON_BOOTS: {'name': 'Iron Boots', 'texture': '../Assets/Icons/Equipments/Iron_Boots.png', 'solid': False},
+    DIAMOND_SWORD: {'name': 'Diamond Sword', 'texture': '../Assets/Icons/Equipments/Diamond_Sword.png', 'solid': False},
+    DIAMOND_SHOVEL: {'name': 'Diamond Shovel', 'texture': '../Assets/Icons/Equipments/Diamond_Shovel.png', 'solid': False},
+    DIAMOND_PICKAXE: {'name': 'Diamond Pickaxe', 'texture': '../Assets/Icons/Equipments/Diamond_Pickaxe.png', 'solid': False},
+    DIAMOND_AXE: {'name': 'Diamond Axe', 'texture': '../Assets/Icons/Equipments/Diamond_Axe.png', 'solid': False},
+    IRON_SWORD: {'name': 'Iron Sword', 'texture': '../Assets/Icons/Equipments/Iron_Sword.png', 'solid': False},
+    IRON_SHOVEL: {'name': 'Iron Shovel', 'texture': '../Assets/Icons/Equipments/Iron_Shovel.png', 'solid': False},
+    IRON_PICKAXE: {'name': 'Iron Pickaxe', 'texture': '../Assets/Icons/Equipments/Iron_Pickaxe.png', 'solid': False},
+    IRON_AXE: {'name': 'Iron Axe', 'texture': '../Assets/Icons/Equipments/Iron_Axe.png', 'solid': False},
+    WOODEN_SWORD: {'name': 'Wooden Sword', 'texture': '../Assets/Icons/Equipments/Wooden_Sword.png', 'solid': False},
+    WOODEN_SHOVEL: {'name': 'Wooden Shovel', 'texture': '../Assets/Icons/Equipments/Wooden_Shovel.png', 'solid': False},
+    WOODEN_PICKAXE: {'name': 'Wooden Pickaxe', 'texture': '../Assets/Icons/Equipments/Wooden_Pickaxe.png', 'solid': False},
+    WOODEN_AXE: {'name': 'Wooden Axe', 'texture': '../Assets/Icons/Equipments/Wooden_Axe.png', 'solid': False},
 }
 
 # --- BG ---
 BG_DIRT_COLOR = color.orange.tint(-0.8)
 BG_STONE_COLOR = color.black
+BG_SAND_COLOR = color.yellow.tint(-0.8)
 
-# --- LAYERS ---
-BG_Z = 1
-FG_Z = 0
+# --- LAYERS (Z-Order) ---
+BG_Z = 1.0       
+PLANT_Z = 0.1    
+FG_Z = 0.0       
+PLAYER_VISUAL_Z = -0.1
 
 # --- GAMEPLAY ---
 PLAYER_MAX_HEALTH = 100
