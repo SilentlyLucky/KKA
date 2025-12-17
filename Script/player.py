@@ -41,7 +41,7 @@ class Player(Entity):
         self.visual = Entity(
             parent=self,
             scale=(calc_scale_x, calc_scale_y), 
-            position=(0, 0, 0),
+            position=(0, 0.05, 0),
             color=color.white
         )
 
