@@ -83,7 +83,7 @@ class Menu:
         btn_back = Button(text="Back", color=color.gray, scale=(0.3, 0.08), y=-0.2, text_color=color.black, on_click=self.show_name_input)
         self.entities.append(btn_back)
 
-    def show_type_selection(self, world_name):
+    def show_type_selection(self, world_name, difficulty):
         self.clear_menu()
         
         title = Text(
@@ -95,14 +95,14 @@ class Menu:
         btn_plains = Button(
             text="Plains", color=color.green, scale=(0.3, 0.08), y=0.1,
             text_color=color.black, 
-            on_click=lambda: self.trigger_start_new(world_name, "plains")
+            on_click=lambda: self.trigger_start_new(world_name, "plains",difficulty)
         )
         self.entities.append(btn_plains)
         
         btn_desert = Button(
             text="Desert", color=color.yellow, scale=(0.3, 0.08), y=0.0,
             text_color=color.black, 
-            on_click=lambda: self.trigger_start_new(world_name, "sand")
+            on_click=lambda: self.trigger_start_new(world_name, "sand",difficulty)
         )
         self.entities.append(btn_desert)
         
@@ -301,11 +301,11 @@ class Menu:
         self.show_load_screen() # Kembali ke list world
 
     # --- LAUNCHERS ---
-    def trigger_start_new(self, name, w_type):
+    def trigger_start_new(self, name, w_type, difficulty):
         self.clear_menu()
         loading = Text(text="Generating World...", origin=(0, 0), scale=2)
         self.entities.append(loading)
-        invoke(self.on_start_new, name, w_type, delay=0.1)
+        invoke(self.on_start_new, name, w_type,difficulty, delay=0.1)
 
     def trigger_load(self, name):
         self.clear_menu()

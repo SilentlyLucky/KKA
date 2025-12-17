@@ -306,8 +306,8 @@ class Chicken(Entity):
     def skin(self):
         self.chicken_graphics = SpriteSheetAnimation('../Assets/Sprite/Ayam.png', parent=self.visual, tileset_size=(6,1), fps=6, animations={
             'idle':((0,0),(0,0)), 
-            'walk_right':((0,0),(2,0)), 
-            'walk_left':((3,0),(5,0))})
+            'walk_right':((3,0),(5,0)), 
+            'walk_left':((0,0),(2,0)),})
         self.chicken_graphics.play_animation('idle')
         self.current_anim_state = 'idle'
         
@@ -358,6 +358,7 @@ class Chicken(Entity):
         print("[CHICKEN] Died -> Dropping Cooked Chicken & Feather")
         if hasattr(self.player, 'inventory_system'):
             self.player.inventory_system.add_item(CHICKEN)
+            self.player.inventory_system.add_item(FEATHER)
         if hasattr(self, 'chicken_graphics'):
             self.chicken_graphics.animations = []
         destroy(self)
@@ -421,6 +422,24 @@ class Chicken(Entity):
         if move_x != 0:
             spd = self.run_speed if self.state == 'flee' else self.walk_speed
             self.x += move_x * spd * dt
+
+        if move_x > 0: # KANAN
+            if self.current_anim_state != 'walk_right':
+                self.chicken_graphics.play_animation('walk_right')
+                self.current_anim_state = 'walk_right'
+            self.visual.scale_x = abs(0.8)
+            
+        elif move_x < 0: # KIRI
+            if self.current_anim_state != 'walk_left':
+                self.chicken_graphics.play_animation('walk_left')
+                self.current_anim_state = 'walk_left'
+            self.visual.scale_x = abs(0.8)
+            
+        else:
+            if self.current_anim_state != 'idle':
+                self.chicken_graphics.play_animation('idle')
+                self.current_anim_state = 'idle'
+            self.visual.scale_x = abs(0.8)
         
         hit = raycast(self.position, Vec3(0,-1,0), distance=(self.scale_y/2)+0.1, traverse_target=self.world, ignore=(self,))
         is_ground = (hit.hit and hasattr(hit.entity, 'solid') and hit.entity.solid)

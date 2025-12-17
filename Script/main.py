@@ -94,7 +94,7 @@ def start_new_game(name, world_type, difficulty ="EASY"):
     launch_game_environment(world_type=world_type, save_data=None)
 
 def load_saved_game(name):
-    global current_world_name
+    global current_world_name, current_difficulty_state
     current_world_name = name
     
     data = load_game(name)

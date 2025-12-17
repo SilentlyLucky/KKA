@@ -33,7 +33,7 @@ TORCH = 101
 BED_ITEM = 102 # Item tempat tidur di tangan
 CHICKEN = 103
 COOKED_CHICKEN = 104
-#FEATHER = 104
+FEATHER = 105
 
 # MINING DROPS (Non-placeable items)
 COAL= 150
@@ -98,7 +98,7 @@ BLOCK_DATA = {
     BED_ITEM: {'name': 'Bed Item', 'texture': '../Assets/Icons/Furniture/Red_Bed.png', 'solid': False}, # Item tempat tidur di tangan
     CHICKEN: {'name': 'Cooked Chicken', 'texture': '../Assets/Icons/Food/Chicken.png', 'solid': False},
     COOKED_CHICKEN: {'name': 'Cooked Chicken', 'texture': '../Assets/Icons/Food/Cooked_Chicken.png', 'solid': False},
-    #FEATHER: {'name': 'Feather', 'texture': '../Assets/Icons/Food/Feather.png', 'solid': False},
+    FEATHER: {'name': 'Feather', 'texture': '../Assets/Icons/Materials/Feather.png', 'solid': False},
 
     DIAMOND: {'name': 'Diamond Gem', 'texture': '../Assets/Icons/Materials/Diamond.png', 'solid': False},
     COAL: {'name': 'Coal Item', 'texture': '../Assets/Icons/Materials/Coal.png', 'solid': False},
