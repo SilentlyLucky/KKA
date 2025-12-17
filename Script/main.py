@@ -15,7 +15,7 @@ window.title = "Minecraft 2D - Zombie AI"
 
 # --- Setup Camera ---
 camera.orthographic = True
-camera.fov = 10
+camera.fov = 20
 
 # Game state
 game_world = None
