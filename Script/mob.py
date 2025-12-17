@@ -257,6 +257,8 @@ class Zombie(Entity):
         self.y += self.y_vel * dt
 
 
+
+
 # =====================================================
 # CHICKEN
 # =====================================================
@@ -264,14 +266,13 @@ class Chicken(Entity):
     def __init__(self, world, player, **kwargs):
         super().__init__(
             parent=scene,
-            model='quad',
             color=color.red,
             origin_y=0,
             position=kwargs.get('position', (0,0)),
             scale=(0.8, 0.8),
-            collider='box',
             z=FG_Z
         )
+
         self.world = world
         self.player = player
         self.hp = CHICKEN_MAX_HEALTH
@@ -290,158 +291,20 @@ class Chicken(Entity):
         self.idle_timer = 0.0
         self.walk_cd_min = CHICKEN_IDLE_MIN
         self.walk_cd_max = CHICKEN_IDLE_MAX
-        print(f"[SPAWN] Chicken at {self.position}")
-
-    def update(self):
-        dt = time.dt
-        
-        # --- DESPAWN LOGIC (MENGGUNAKAN CONFIG) ---
-        if distance(self.position, self.player.position) > MOB_DESPAWN_RANGE:
-            if hasattr(self, 'chicken_graphics'):
-                self.chicken_graphics.animations = []
-            destroy(self)
-            return
-
-        self.ai(dt)
-        self.move(dt)
-
-    def ai(self, dt):
-        if self.idle_timer > 0: self.idle_timer -= dt
-        if self.flee_timer > 0: self.flee_timer -= dt
-        if self.path and self.idx >= len(self.path): self.path = []; self.idx = 0
-        if self.state == 'flee':
-            if self.flee_timer <= 0:
-                self.state = 'idle'
-                self.idle_timer = random.uniform(self.walk_cd_min, self.walk_cd_max)
-            elif not self.path: self.run_away()
-        elif self.state == 'idle':
-            if not self.path and self.idle_timer <= 0: self.random_walk()
-        elif self.state == 'walk':
-            if not self.path:
-                self.state = 'idle'
-                self.idle_timer = random.uniform(self.walk_cd_min, self.walk_cd_max)
-
-    def take_damage(self, dmg):
-        self.hp -= dmg
-        self.blink(color.red, duration=0.2)
-        print(f"[CHICKEN] Ouch! HP: {self.hp}")
-        if self.hp <= 0: destroy(self); return
-        self.state = 'flee'
-        self.flee_timer = self.flee_duration
-        self.path = []; self.idx = 0
-        self.run_away()
-
-    def random_walk(self):
-        start = (round(self.x), round(self.y))
-        for _ in range(6):
-            rx = start[0] + random.randint(-6, 6)
-            for ry in range(start[1]+2, start[1]-3, -1):
-                # FIX: Gunakan self.world
-                if self.world.is_standable(rx, ry):
-                    p = bfs(self.world, start, (rx, ry))
-                    if p: self.path = p; self.idx = 0; self.state = 'walk'; return
-        step = random.choice([-1,1])
-        # FIX: Gunakan self.world
-        if self.world.is_standable(start[0]+step, start[1]):
-            self.path = [(start[0]+step, start[1])]; self.idx = 0; self.state = 'walk'
-
-    def run_away(self):
-        start = (round(self.x), round(self.y))
-        
-        primary_dir = 1 if self.player.x < self.x else -1
-        directions_to_try = [primary_dir, -primary_dir]
-        
-        max_dist = CHICKEN_FLEE_DISTANCE
-        min_dist = 2 
-        
-        for try_dir in directions_to_try:
-            for dist in range(max_dist, min_dist - 1, -1):
-                target_x = round(self.x + (try_dir * dist))
-                
-                if not (0 <= target_x < WIDTH): continue
-                
-                start_y_scan = round(self.y) + 8  
-                end_y_scan = round(self.y) - 8
-                
-                for ty in range(start_y_scan, end_y_scan, -1):
-                    if not (0 <= ty < DEPTH): continue
-                    
-                    # FIX: Gunakan self.world
-                    if self.world.is_standable(target_x, ty):
-                        path = bfs(self.world, start, (target_x, ty))
-                        if path:
-                            self.path = path
-                            self.idx = 0
-                            print(f"[CHICKEN] Fleeing to ({target_x}, {ty})")
-                            return
-                        
-        print("[CHICKEN] Cornered! Panic random walk.")
-        self.random_walk()
-
-    def move(self, dt):
-        move_x = 0
-        if self.path and self.idx < len(self.path):
-            tx, ty = self.path[self.idx]
-            if ty > self.y + 0.1 and self.grounded: self.y_vel = self.jump_force
-            dx = tx - self.x
-            if abs(dx) > 0.15: move_x = 1 if dx > 0 else -1
-            else: self.idx += 1
-        else: self.path = []; self.idx = 0
-        if move_x != 0:
-            spd = self.run_speed if self.state == 'flee' else self.walk_speed
-            self.x += move_x * spd * dt
-        
-        hit = raycast(self.position, Vec3(0,-1,0), distance=(self.scale_y/2)+0.1, traverse_target=self.world, ignore=(self,))
-        is_ground = (hit.hit and hasattr(hit.entity, 'solid') and hit.entity.solid)
-        if is_ground:
-            self.grounded = True
-            if self.y_vel <= 0: self.y = hit.world_point.y + self.scale_y/2; self.y_vel = 0
-        else:
-            self.grounded = False
-            self.y_vel -= self.gravity * dt
-            self.y_vel = max(self.y_vel, -self.max_fall)
-        self.y += self.y_vel * dt
-
-# =====================================================
-# CHICKEN
-# =====================================================
-class Chicken(Entity):
-    def __init__(self, world, player, **kwargs):
-        super().__init__(
-            parent=scene,
-            texture='../Assets/Sprite/Ayam.png',
-            color=color.red,
-            origin_y=0,
-            position=kwargs.get('position', (0,0)),
-            scale=(0.8, 0.8),
-            collider='box',
-            z=FG_Z
-        )
-        self.world = world
-        self.player = player
-        self.hp = CHICKEN_MAX_HEALTH
-        self.walk_speed = CHICKEN_WALK_SPEED
-        self.run_speed = CHICKEN_RUN_SPEED
-        self.jump_force = CHICKEN_JUMP_FORCE
-        self.gravity = GLOBAL_GRAVITY
-        self.max_fall = MAX_FALL_SPEED
-        self.y_vel = 0
-        self.grounded = False
-        self.state = 'idle'
-        self.path = []
-        self.idx = 0
-        self.flee_timer = 0
-        self.flee_duration = CHICKEN_FLEE_DURATION
-        self.idle_timer = 0.0
-        self.walk_cd_min = CHICKEN_IDLE_MIN
-        self.walk_cd_max = CHICKEN_IDLE_MAX
+            # Visual
+        self.visual = Entity(
+            parent=self, 
+            scale=(0.8, 0.8), 
+            position=(0, 0, 0), 
+            double_sided=True)
+        self.skin()
         print(f"[SPAWN] Chicken at {self.position}")
 
     def skin(self):
-        self.chicken_graphics = SpriteSheetAnimation('../Assets/Sprite/chicken.png', parent=self.visual, tileset_size=(6,1), fps=6, animations={
+        self.chicken_graphics = SpriteSheetAnimation('../Assets/Sprite/Ayam.png', parent=self.visual, tileset_size=(6,1), fps=6, animations={
             'idle':((0,0),(0,0)), 
-            'walk_right':((0,0),(2,0)), 
-            'walk_left':((3,0),(5,0))})
+            'walk_right':((3,0),(5,0)), 
+            'walk_left':((0,0),(2,0)),})
         self.chicken_graphics.play_animation('idle')
         self.current_anim_state = 'idle'
 
@@ -543,6 +406,24 @@ class Chicken(Entity):
         if move_x != 0:
             spd = self.run_speed if self.state == 'flee' else self.walk_speed
             self.x += move_x * spd * dt
+
+        if move_x > 0: # KANAN
+            if self.current_anim_state != 'walk_right':
+                self.chicken_graphics.play_animation('walk_right')
+                self.current_anim_state = 'walk_right'
+            self.visual.scale_x = abs(0.8)
+            
+        elif move_x < 0: # KIRI
+            if self.current_anim_state != 'walk_left':
+                self.chicken_graphics.play_animation('walk_left')
+                self.current_anim_state = 'walk_left'
+            self.visual.scale_x = abs(0.8)
+            
+        else:
+            if self.current_anim_state != 'idle':
+                self.chicken_graphics.play_animation('idle')
+                self.current_anim_state = 'idle'
+            self.visual.scale_x = abs(0.8)
         
         hit = raycast(self.position, Vec3(0,-1,0), distance=(self.scale_y/2)+0.1, traverse_target=self.world, ignore=(self,))
         is_ground = (hit.hit and hasattr(hit.entity, 'solid') and hit.entity.solid)
