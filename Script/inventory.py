@@ -7,18 +7,11 @@ class Inventory(Entity):
     def __init__(self, load_data=None, player_ref=None, **kwargs):
         super().__init__(parent=camera.ui)
         
-        # Player reference for armor synchronization
         self.player_ref = player_ref
         
-        # --- DATA SYSTEM ---
-        # Slot 0-8: Hotbar
-        # Slot 9-35: Main Inventory (3 Baris x 9 Kolom)
-        # Slot 36-39: Crafting Input (2x2)
-        # Slot 40: Crafting Output
-        # Slot 41-44: Armor
         self.items = [None] * 45
         
-        self.selected_index = 0  # Hotbar index (0-8)
+        self.selected_index = 0
         self.is_open = False  
         
         self.hand_item = None 
@@ -45,10 +38,10 @@ class Inventory(Entity):
             self.hotbar_slots.append(s)
             self.slots.append(s)
 
-        # 2. MAIN PANEL (Muncul saat tekan E)
+
         self.main_panel = Entity(parent=self, enabled=False)
         
-        # Background Panel Gelap
+
         self.bg = Entity(
             parent=self.main_panel, 
             model='quad', 
@@ -58,7 +51,7 @@ class Inventory(Entity):
             z=10
         )
         
-        # > Main Inventory Grid (9x3) - Indeks 9 sampai 35
+
         start_y = -0.042
         for row in range(3):
             for col in range(9):
@@ -71,7 +64,7 @@ class Inventory(Entity):
                 )
                 self.slots.append(s)
 
-        # > Armor Slots (4 Petak di Pojok Kiri Atas)
+
         armor_x = -0.323
         armor_start_y = 0.323
         
@@ -87,7 +80,7 @@ class Inventory(Entity):
             )
             self.slots.append(s)
 
-        # > Crafting Slots (2x2 di Pojok Kanan Atas)
+
         craft_indices = [[36, 37], [38, 39]]
         craft_x_start = 0.08
         craft_y_start = 0.275
@@ -108,15 +101,15 @@ class Inventory(Entity):
                 s.scale = slot_size 
                 self.slots.append(s)
         
-        # > Crafting Output (Besar) - Indeks 40
+
         self.craft_out_slot = self._create_slot(parent=self.main_panel, index=40, x=0.336, y=0.225, scale=0.08, col=color.rgba(0,0,0,0.1))
         self.slots.append(self.craft_out_slot)
 
-        # Load Data jika ada
+
         if load_data:
             self.load_from_data(load_data)
 
-        # Refresh tampilan awal
+
         self.update_ui()
         self.highlight_selected_hotbar()
 
@@ -124,7 +117,7 @@ class Inventory(Entity):
         return self.items
 
     def load_from_data(self, data):
-        # Resize data jika perlu
+
         if len(data) < 45:
             for i, item in enumerate(data):
                 if i < 45: self.items[i] = item
@@ -133,7 +126,6 @@ class Inventory(Entity):
         self.update_ui()
 
     def _create_slot(self, parent, index, x, y=0, scale=0.08, col=color.rgba(1,1,1,0.1)):
-        """Helper untuk membuat slot button"""
         slot = Button(
             parent=parent,
             model='quad',
@@ -239,7 +231,7 @@ class Inventory(Entity):
                     slot.item_count_shadow.text = ""
                     slot.item_count_shadow.visible = False
         
-        # Update Hand Item Icon
+
         if self.hand_item:
             block_id = self.hand_item['id']
             count = self.hand_item['count']
@@ -289,7 +281,7 @@ class Inventory(Entity):
                     self.items[index] = cursor_item
                     self.hand_item = clicked_item
         
-        # Sync armor with player when armor slot changes
+
         if 41 <= index <= 44 and self.player_ref:
             self.player_ref.on_armor_changed(index)
         
@@ -329,7 +321,7 @@ class Inventory(Entity):
                     self.items[index] = cursor_item
                     self.hand_item = clicked_item
 
-        # Sync armor with player when armor slot changes
+
         if 41 <= index <= 44 and self.player_ref:
             self.player_ref.on_armor_changed(index)
             
@@ -346,12 +338,12 @@ class Inventory(Entity):
         
         cursor_item = self.hand_item
         
-        # If empty hand, just pick up armor
+
         if cursor_item is None:
             self.on_slot_left_click(index)
             return
         
-        # Only allow placing valid armor in this slot
+
         if cursor_item['id'] in valid_items:
             self.on_slot_left_click(index)
         else:
@@ -398,7 +390,7 @@ class Inventory(Entity):
         self.add_item(item_dict['id'], item_dict['count'])
 
     def add_item(self, block_id, count=1):
-        # PRIORITY 1: Stacking (only in hotbar & inventory, not crafting/armor)
+
         for i in range(36):
             item = self.items[i]
             if item and item['id'] == block_id and item['count'] < 64:
@@ -410,25 +402,25 @@ class Inventory(Entity):
                     self.update_ui()
                     return
 
-        # If still have remaining items
+
         while count > 0:
             new_item = {'id': block_id, 'count': min(count, 64)}
             placed = False
             
-            # PRIORITY 2: Selected hotbar slot if empty
+    
             sel_idx = self.selected_index
             if 0 <= sel_idx < 9 and self.items[sel_idx] is None:
                 self.items[sel_idx] = new_item
                 placed = True
             else:
-                # PRIORITY 3: Any empty hotbar slot
+        
                 for i in range(9):
                     if self.items[i] is None:
                         self.items[i] = new_item
                         placed = True
                         break
                 
-                # PRIORITY 4: Any empty inventory slot
+        
                 if not placed:
                     for i in range(9, 36):
                         if self.items[i] is None:
@@ -492,7 +484,7 @@ class Inventory(Entity):
                 self.add_item_dict(self.hand_item)
                 self.hand_item = None
                 
-                # Return crafting items to inventory
+        
                 for i in range(36, 40):
                     if self.items[i]:
                         self.add_item_dict(self.items[i])

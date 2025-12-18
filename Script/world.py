@@ -11,14 +11,14 @@ class World(Entity):
         super().__init__()
         self.world_type = world_type
         
-        # Data Logika
+        
         self.map_data = [[0 for y in range(DEPTH)] for x in range(WIDTH)]
         self.ore_map = {}
         self.surface_heights = []
         self.solid_map = [[False for _ in range(DEPTH)] for _ in range(WIDTH)]
         self.light_map = [[0 for y in range(DEPTH)] for x in range(WIDTH)]
         
-        # Data Visual
+        
         self.blocks = [] 
         self.block_dict = {} 
         self.bg_dict = {}    
@@ -36,11 +36,11 @@ class World(Entity):
         self.compute_light()
         self.apply_light_to_blocks()
         
-        # Rendering state
+        
         self.prev_cam_x = -9999
         self.prev_cam_y = -9999
 
-        # --- LOGIKA LOAD VS GENERATE ---
+        
         if save_data:
             print("Loading World from Save Data...")
             self.load_from_data(save_data)
@@ -50,7 +50,7 @@ class World(Entity):
             self.generate_trees()
             self.generate_ores()
             
-        # Kita panggil update manual sekali agar render awal jalan
+        
         self.update_chunk()
 
     def get_save_data(self):
@@ -67,8 +67,8 @@ class World(Entity):
         self.map_data = data["map_data"]
         self.ore_map = data["ore_map"]
         
-        # Kita perlu regenerasi surface_heights untuk keperluan render background
-        # (Background butuh tahu di mana permukaan tanahnya)
+        
+        
         self.surface_heights = []
         for x in range(WIDTH):
             h = BASE_HEIGHT + int(math.sin(x / 20) * 10 + math.cos(x / 10) * 5)
@@ -93,7 +93,7 @@ class World(Entity):
         for x in range(WIDTH):
             for y in range(DEPTH):
                 if y == 0:
-                    self.map_data[x][y] = 1 # Bedrock
+                    self.map_data[x][y] = 1 
                     continue
                 
                 stone_level = self.surface_heights[x] - DIRT_LAYER_THICKNESS
@@ -131,27 +131,27 @@ class World(Entity):
         3. Kaki (x, y-1) harus SOLID (TIDAK ada di PASSABLE_BLOCKS).
         """
         
-        # Cek batas dunia
+        
         if not (0 <= x < WIDTH and 0 <= y < DEPTH):
             return False
 
-        # 1. Cek Badan (Posisi saat ini)
+        
         if self.map_data[x][y] not in PASSABLE_BLOCKS:
             return False
             
-        # 2. Cek Kepala (Posisi atas)
+        
         if y + 1 < DEPTH:
             if self.map_data[x][y+1] not in PASSABLE_BLOCKS:
                 return False
             
-        # 3. Cek Pijakan (Posisi bawah)
+        
         if y - 1 >= 0:
             ground_val = self.map_data[x][y-1]
-            # Pijakan harus SOLID. Jadi ground_val TIDAK boleh ada di PASSABLE_BLOCKS.
+            
             if ground_val in PASSABLE_BLOCKS: 
                 return False
         else:
-            return False # Void (y < 0) tidak bisa dipijak
+            return False 
             
         return True
 
@@ -241,7 +241,7 @@ class World(Entity):
         min_y = max(0, cam_y - VIEW_DISTANCE_Y)
         max_y = min(DEPTH, cam_y + VIEW_DISTANCE_Y)
 
-        # RENDER BLOK
+        
         for x in range(min_x, max_x):
             for y in range(min_y, max_y):
                 pos = (x, y)
@@ -251,7 +251,7 @@ class World(Entity):
                 if pos not in self.block_dict and self.map_data[x][y] != 0:
                     self._render_single_block(x, y)
 
-        # UNLOAD
+        
         unload_dist_x = VIEW_DISTANCE_X + 5
         unload_dist_y = VIEW_DISTANCE_Y + 5
 
@@ -414,7 +414,7 @@ class World(Entity):
         self.apply_light_to_blocks()
         self.trigger_sand_gravity(pos[0], pos[1] + 1)
 
-    # ... Helper sand logic (Sama, tidak berubah) ...
+    
     def _set_block_type(self, block, new_type):
         data = BLOCK_DATA.get(new_type, {"color": color.white, "name": "Unknown"})
         block.block_type = new_type
