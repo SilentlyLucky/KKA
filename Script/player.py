@@ -103,7 +103,7 @@ class Player(Entity):
             )
             self.hearts.append(heart)
 
-                # Armor Stats
+        # Armor Stats
         self.max_armor = 100 # 10 icons, each representing 2 armor points
         self.armor = 0     # Current armor value (example: starting with 5 icons)
         
@@ -129,6 +129,33 @@ class Player(Entity):
                 color=color.white
             )
             self.armor_icons.append(icon)
+
+        # food Stats
+        self.max_food = 100 # 10 icons, each representing 2 food points
+        self.food = 100     # Current food value (example: starting with 5 icons)
+        
+        # Load food textures
+        self.food_full_tex = load_texture('../Assets/Interface/Food_Full.png')
+        self.food_half_tex = load_texture('../Assets/Interface/Food_Half.png')
+        self.food_empty_tex = load_texture('../Assets/Interface/Food_Empty.png')
+
+        # food UI Container (Top Right)
+        # We use x=0.7 to move it to the right side of the screen
+        self.food_container = Entity(parent=camera.ui, position=(-0.34, 0.4), scale=1)
+        self.food_icons = []
+        
+        food_spacing = 0.04 
+        for i in range(10): # 10 food icons
+            icon = Entity(
+                parent=self.food_container,
+                model='quad',
+                texture=self.food_full_tex,
+                scale=(0.03, 0.03),
+                # We subtract i * spacing to make the icons grow from right to left
+                position=(-i * food_spacing, 0, 0),
+                color=color.white
+            )
+            self.food_icons.append(icon)
 
 
     def is_solid_hit(self, hit):
@@ -454,6 +481,25 @@ class Player(Entity):
                 # Empty armor icon
                 self.armor_icons[i].texture = self.armor_empty_tex
                 self.armor_icons[i].enabled = True
+
+    def update_food_ui(self):
+        """Update Minecraft-style food icons based on current food"""
+
+        for i in range(10): # 10 food icons
+            food_hp_threshold = (i + 1) * 10 
+            food_hp_min = i * 10
+
+            if self.food >= food_hp_threshold:
+                # Full food icon
+                self.food_icons[i].texture = self.food_full_tex
+                self.food_icons[i].enabled = True
+            elif self.food > food_hp_min:
+                # Half food icon
+                self.food_icons[i].texture = self.food_half_tex
+                self.food_icons[i].enabled = True
+            else:
+                # Empty food icon
+                self.food_icons[i].texture = self.food_empty_tex
 
     def take_damage(self, amount):
         self.health -= amount
