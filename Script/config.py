@@ -31,7 +31,7 @@ BED_BLOCK = 15 # Blok tempat tidur yang sudah ditaruh (Head/Foot bisa kompleks, 
 STICK = 100
 TORCH = 101
 BED_ITEM = 102 # Item tempat tidur di tangan
-CHICKEN = 103
+RAW_CHICKEN = 103
 COOKED_CHICKEN = 104
 FEATHER = 105
 
@@ -96,8 +96,8 @@ BLOCK_DATA = {
     BED_BLOCK: {'name': 'Bed', 'texture': '../Assets/Textures/bed_side.png', 'solid': True}, # Visual di world
     STICK: {'name': 'Stick', 'texture': '../Assets/Icons/Materials/Stick.png', 'solid': False},
     BED_ITEM: {'name': 'Bed Item', 'texture': '../Assets/Icons/Furniture/Red_Bed.png', 'solid': False}, # Item tempat tidur di tangan
-    CHICKEN: {'name': 'Chicken', 'texture': '../Assets/Icons/Food/Chicken.png', 'solid': False},
-    COOKED_CHICKEN: {'name': 'Cooked Chicken', 'texture': '../Assets/Icons/Item/Cooked_Chicken.png', 'solid': False},
+    RAW_CHICKEN: {'name': 'Raw Chicken', 'texture': '../Assets/Icons/Food/Chicken.png', 'solid': False},
+    COOKED_CHICKEN: {'name': 'Cooked Chicken', 'texture': '../Assets/Icons/Food/Cooked_Chicken.png', 'solid': False},
     FEATHER: {'name': 'Feather', 'texture': '../Assets/Icons/Materials/Feather.png', 'solid': False},
 
     DIAMOND: {'name': 'Diamond Gem', 'texture': '../Assets/Icons/Materials/Diamond.png', 'solid': False},
@@ -198,7 +198,7 @@ TOOL_ARMOR = {
 
 # --- FOOD VALUES ---
 FOOD = {
-    CHICKEN:2, COOKED_CHICKEN:6
+    RAW_CHICKEN:2, COOKED_CHICKEN:6
 }
 
 def set_difficulty(difficulty):

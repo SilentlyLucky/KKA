@@ -137,7 +137,7 @@ class Player(Entity):
         # === HUNGER SYSTEM ===
         self.max_food = 20  # Max food points (10 icons x 2 points each)
         self.food = 20
-        self.food_depletion_rate = 0.5  # Points per second
+        self.food_depletion_rate = 0.2  # Points per second
         self.food_timer = 0
         self.starving = False
         self.starvation_damage_rate = 2.0  # Seconds between damage when starving
