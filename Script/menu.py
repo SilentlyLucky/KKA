@@ -10,7 +10,7 @@ class Menu:
         
         window.color = color.cyan
         self.entities = [] 
-        self.input_field = None # Simpan referensi input field
+        self.input_field = None
 
         self.show_main_menu()
     

@@ -1,13 +1,9 @@
 from ursina import *
-import config  # Gunakan import config agar difficulty dinamis jalan
+import config  
 import heapq
 from collections import deque
 import random
 import time
-
-# =====================================================
-# HELPER FUNCTIONS
-# =====================================================
 
 def get_neighbors(world, pos):
     x, y = pos
@@ -59,9 +55,6 @@ def astar(world, start, goal, max_steps=300):
                 heapq.heappush(open_set, (ng + h(n, goal), n))
     return []
 
-# =====================================================
-# ZOMBIE
-# =====================================================
 class Zombie(Entity):
     def __init__(self, world, player, **kwargs):
         super().__init__(
@@ -75,20 +68,19 @@ class Zombie(Entity):
         )
         self.world = world
         self.player = player
+        self.collision = False
         
-        # Stats
         self.scale = (0.9, 1.8) 
         self.max_health = config.ZOMBIE_MAX_HEALTH
         self.health = self.max_health
         self.walk_speed = config.ZOMBIE_WALK_SPEED
         self.run_speed = config.ZOMBIE_RUN_SPEED
-        self.jump_force = config.ZOMBIE_JUMP_FORCE
+        self.jump_force = config.ZOMBIE_JUMP_FORCEZ
         self.gravity = config.GLOBAL_GRAVITY
         self.max_fall = config.MAX_FALL_SPEED
         self.y_vel = 0
         self.grounded = False
-
-        # AI
+        
         self.state = 'idle'
         self.path = []
         self.idx = 0
@@ -101,8 +93,7 @@ class Zombie(Entity):
         self.attack_range = config.ZOMBIE_ATTACK_RANGE
         self.attack_cooldown = config.ZOMBIE_ATTACK_COOLDOWN
         self.damage = config.ZOMBIE_DAMAGE
-
-        # Visual
+   
         target_w, target_h = 1.0, 2.0
         self.visual_scale_relative = (target_w / self.scale_x, target_h / self.scale_y)
         self.visual = Entity(parent=self, scale=self.visual_scale_relative, position=(0, 0, -0.1), double_sided=True)
@@ -126,20 +117,17 @@ class Zombie(Entity):
         brightness = 0.1 + 0.9 * (lvl / 14.0) 
         if hasattr(self, 'zombie_graphics'): self.zombie_graphics.color = color.white * brightness
 
-    # --- FUNGSI PENTING: MENGHAPUS DENGAN AMAN ---
     def safe_destroy(self):
-        # 1. Cek apakah grafik masih ada
+        
         if hasattr(self, 'zombie_graphics') and self.zombie_graphics:
-            # 2. Matikan sequence animasi
+            
             if hasattr(self.zombie_graphics, 'sequence') and self.zombie_graphics.sequence:
                 self.zombie_graphics.sequence.finish()
                 self.zombie_graphics.sequence.kill()
                 self.zombie_graphics.sequence = None
-            
-            # 3. Hapus referensi dictionary animasi agar destroy() bawaan tidak error
+                     
             self.zombie_graphics.animations = None 
-            
-        # 4. Hapus entity fisik
+                 
         try:
             destroy(self)
         except:
@@ -147,8 +135,7 @@ class Zombie(Entity):
 
     def update(self):
         dt = time.dt
-        
-        # Despawn Logic
+   
         if distance(self.position, self.player.position) > config.MOB_DESPAWN_RANGE:
             self.safe_destroy()
             return
@@ -241,8 +228,7 @@ class Zombie(Entity):
         if move_x != 0:
             spd = self.run_speed if self.state == 'chase' else self.walk_speed
             self.x += move_x * spd * dt
-        
-        # VISUAL LOGIC
+            
         if move_x > 0: 
             if self.current_anim_state != 'walk_right':
                 self.zombie_graphics.play_animation('walk_right')
@@ -270,10 +256,6 @@ class Zombie(Entity):
             self.y_vel = max(self.y_vel, -self.max_fall)
         self.y += self.y_vel * dt
 
-
-# =====================================================
-# CHICKEN
-# =====================================================
 class Chicken(Entity):
     def __init__(self, world, player, **kwargs):
         super().__init__(
@@ -288,8 +270,9 @@ class Chicken(Entity):
         )
         self.world = world
         self.player = player
+        self.collision = False
         
-        # Stats
+        
         self.hp = config.CHICKEN_MAX_HEALTH
         self.walk_speed = config.CHICKEN_WALK_SPEED
         self.run_speed = config.CHICKEN_RUN_SPEED
@@ -308,8 +291,7 @@ class Chicken(Entity):
         self.idle_timer = 0.0
         self.walk_cd_min = config.CHICKEN_IDLE_MIN
         self.walk_cd_max = config.CHICKEN_IDLE_MAX
-
-        # Visual Setup
+      
         target_w, target_h = 1.0, 1.0 
         self.visual_scale_relative = (target_w / self.scale_x, target_h / self.scale_y)
         
@@ -339,14 +321,13 @@ class Chicken(Entity):
         self.chicken_graphics.play_animation('idle')
         self.current_anim_state = 'idle'
 
-    # --- FUNGSI PENTING: MENGHAPUS DENGAN AMAN ---
     def safe_destroy(self):
         if hasattr(self, 'chicken_graphics') and self.chicken_graphics:
             if hasattr(self.chicken_graphics, 'sequence') and self.chicken_graphics.sequence:
-                self.chicken_graphics.sequence.finish() # Stop sequence
+                self.chicken_graphics.sequence.finish() 
                 self.chicken_graphics.sequence.kill()
                 self.chicken_graphics.sequence = None
-            self.chicken_graphics.animations = None # Hapus dictionary
+            self.chicken_graphics.animations = None 
         
         try:
             destroy(self)
@@ -477,9 +458,6 @@ class Chicken(Entity):
             self.y_vel = max(self.y_vel, -self.max_fall)
         self.y += self.y_vel * dt
 
-# =====================================================
-# SPAWNERS
-# =====================================================
 class ZombieSpawner:
     def __init__(self, world, player):
         self.world = world; self.player = player; self.timer = 0

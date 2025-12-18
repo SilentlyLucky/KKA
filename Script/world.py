@@ -556,4 +556,4 @@ class World(Entity):
         return max(0, best - 1)
     
     def is_light_blocking(self, x, y):
-        return self.solid_map[x][y]
+        return self.map_data[x][y] not in (0, GRASS_PLANT, LOG, LEAVES)
