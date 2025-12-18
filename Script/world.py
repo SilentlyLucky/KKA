@@ -4,7 +4,7 @@ from block import Block
 import math
 import random
 from collections import deque
-
+from game_multiprocessing import generate_map_data_parallel
 
 class World(Entity):
     def __init__(self, world_type="plains", save_data=None):
@@ -31,10 +31,6 @@ class World(Entity):
         self.plant_parent = Entity(parent=self, name='Plant_Layer')
 
         self.generating = True
-        self.generate_data()
-        self.generating = False
-        self.compute_light()
-        self.apply_light_to_blocks()
         
         # Rendering state
         self.prev_cam_x = -9999
@@ -50,6 +46,10 @@ class World(Entity):
             self.generate_trees()
             self.generate_ores()
             
+        self.generating = False
+        self.compute_light()
+        self.apply_light_to_blocks()
+        
         # Kita panggil update manual sekali agar render awal jalan
         self.update_chunk()
 
@@ -62,15 +62,11 @@ class World(Entity):
         }
 
     def _calculate_height(self, x):
-        """Helper untuk menghitung ketinggian tanah berdasarkan biome"""
+        """Helper untuk menghitung ketinggian tanah (digunakan saat Load & Generate)"""
         if self.world_type == "sand":
-            # Desert Terrain: Rolling dunes (Gurun: Gelombang lebih lebar dan landai)
-            # Menggunakan pembagi yang lebih besar (x/30, x/50) membuat gelombang lebih panjang
             h = BASE_HEIGHT + int(math.sin(x / 30) * 12 + math.cos(x / 15) * 4)
         else:
-            # Plains Terrain (Original): Bukit standar
             h = BASE_HEIGHT + int(math.sin(x / 20) * 10 + math.cos(x / 10) * 5)
-            
         return clamp(h, 5, DEPTH-1)
 
     def load_from_data(self, data):
@@ -79,91 +75,52 @@ class World(Entity):
         self.map_data = data["map_data"]
         self.ore_map = data["ore_map"]
         
-        # Kita perlu regenerasi surface_heights untuk keperluan render background
-        # (Background butuh tahu di mana permukaan tanahnya)
         self.surface_heights = []
         for x in range(WIDTH):
             h = self._calculate_height(x)
             self.surface_heights.append(h)
 
     def generate_data(self):
-        print("Generating Map Data...")
-        self.surface_heights = []
-        self.map_data = [[0 for y in range(DEPTH)] for x in range(WIDTH)]
-        
-        for x in range(WIDTH):
-            # Menggunakan helper function agar konsisten dengan load_from_data
-            h = self._calculate_height(x)
-            
-            self.surface_heights.append(h)
-            for y in range(DEPTH):
-                if y < h:
-                    self.map_data[x][y] = 1
+        """
+        Menggunakan Multiprocessing untuk menghasilkan data map lebih cepat.
+        """
+        # Panggil fungsi paralel dari game_multiprocessing.py
+        self.surface_heights, self.map_data = generate_map_data_parallel(self.world_type)
 
+        # Bagian ini tetap dijalankan di thread utama karena ringan dan butuh akses random
+        # (Menambahkan rumput/tanaman di permukaan)
         random.seed(42)
-        for x in range(WIDTH):
-            for y in range(DEPTH):
-                if y == 0:
-                    self.map_data[x][y] = 1 # Bedrock
-                    continue
-                
-                stone_level = self.surface_heights[x] - DIRT_LAYER_THICKNESS
-                if y < stone_level:
-                    if self.world_type == "sand":
-                        # Gua di gurun mungkin sedikit lebih jarang atau bentuknya beda
-                        cave_value = (
-                            math.sin(x * 0.1) * math.cos(y * 0.1) 
-                            + math.sin(x * 0.05) * math.cos(y * 0.15)
-                        )
-                        threshold = 0.4
-                    else:
-                        cave_value = (
-                            math.sin(x * 0.1) * math.cos(y * 0.1)
-                            + math.sin(x * 0.05) * math.cos(y * 0.15)
-                        )
-                        threshold = 0.3
-
-                    if cave_value > threshold:
-                        self.map_data[x][y] = 0
-        
         if self.world_type != "sand":
             for x in range(WIDTH):
                 if not self._is_desert_biome(x):
                     h = self.surface_heights[x]
                     if h < DEPTH:
-                        if self.map_data[x][h] == 0 and random.random() < 0.25:
-                            self.map_data[x][h] = GRASS_PLANT
+                        # Pastikan blok di bawahnya padat sebelum taruh rumput
+                        if self.map_data[x][h] == 0 and self.map_data[x][h-1] == 1:
+                            if random.random() < 0.25:
+                                self.map_data[x][h] = GRASS_PLANT
 
     def is_standable(self, x, y):
-        """
-        Mengecek apakah posisi (x, y) valid untuk entitas berdiri.
-        Syarat:
-        1. Badan (x, y) harus ada di PASSABLE_BLOCKS (kosong/tembus).
-        2. Kepala (x, y+1) harus ada di PASSABLE_BLOCKS.
-        3. Kaki (x, y-1) harus SOLID (TIDAK ada di PASSABLE_BLOCKS).
-        """
-        
         # Cek batas dunia
         if not (0 <= x < WIDTH and 0 <= y < DEPTH):
             return False
 
-        # 1. Cek Badan (Posisi saat ini)
+        # 1. Cek Badan
         if self.map_data[x][y] not in PASSABLE_BLOCKS:
             return False
             
-        # 2. Cek Kepala (Posisi atas)
+        # 2. Cek Kepala
         if y + 1 < DEPTH:
             if self.map_data[x][y+1] not in PASSABLE_BLOCKS:
                 return False
             
-        # 3. Cek Pijakan (Posisi bawah)
+        # 3. Cek Pijakan
         if y - 1 >= 0:
             ground_val = self.map_data[x][y-1]
-            # Pijakan harus SOLID. Jadi ground_val TIDAK boleh ada di PASSABLE_BLOCKS.
             if ground_val in PASSABLE_BLOCKS: 
                 return False
         else:
-            return False # Void (y < 0) tidak bisa dipijak
+            return False 
             
         return True
 
@@ -185,6 +142,7 @@ class World(Entity):
                 if h-1 < 0: continue
                 
                 tree_positions.append(x)
+                # Ubah blok di bawah pohon jadi dirt
                 self.map_data[x][h-1] = DIRT 
                 
                 trunk_height = 6
@@ -426,7 +384,7 @@ class World(Entity):
         self.apply_light_to_blocks()
         self.trigger_sand_gravity(pos[0], pos[1] + 1)
 
-    # ... Helper sand logic (Sama, tidak berubah) ...
+    # ... Helper sand logic ...
     def _set_block_type(self, block, new_type):
         data = BLOCK_DATA.get(new_type, {"color": color.white, "name": "Unknown"})
         block.block_type = new_type

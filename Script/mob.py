@@ -1,17 +1,16 @@
 from ursina import *
-import config  # Gunakan import config agar difficulty dinamis jalan
+import config
 import heapq
 from collections import deque
 import random
 import time
 
-# =====================================================
-# HELPER FUNCTIONS
-# =====================================================
+# --- Helper Functions (Logic Pathfinding Teman Anda) ---
 
 def get_neighbors(world, pos):
     x, y = pos
     res = []
+    # 8 Arah
     for dx, dy in [(1,0), (-1,0), (1,1), (-1,1), (1,-1), (-1,-1)]:
         nx, ny = x + dx, y + dy
         if not (0 <= nx < config.WIDTH and 0 <= ny < config.DEPTH):
@@ -29,6 +28,7 @@ def bfs(world, start, goal, max_steps=300):
         if steps > max_steps: return []
         curr, path = q.popleft()
         if curr == goal: return path[1:]
+        
         for n in get_neighbors(world, curr):
             if n not in visited:
                 visited.add(n)
@@ -37,20 +37,25 @@ def bfs(world, start, goal, max_steps=300):
 
 def astar(world, start, goal, max_steps=300):
     def h(a, b): return abs(a[0]-b[0]) + abs(a[1]-b[1])
+    
     open_set = [(0, start)]
     came = {}
     g = {start: 0}
     steps = 0
+    
     while open_set:
         steps += 1
         if steps > max_steps: return []
+        
         _, curr = heapq.heappop(open_set)
+        
         if curr == goal:
             path = [curr]
             while curr in came:
                 curr = came[curr]
                 path.insert(0, curr)
             return path[1:]
+            
         for n in get_neighbors(world, curr):
             ng = g[curr] + 1
             if n not in g or ng < g[n]:
@@ -58,6 +63,15 @@ def astar(world, start, goal, max_steps=300):
                 came[n] = curr
                 heapq.heappush(open_set, (ng + h(n, goal), n))
     return []
+
+# --- Dummy functions untuk menjaga kompatibilitas dengan main.py ---
+# Karena kita kembali ke AI synchronous, kita tidak butuh executor, 
+# tapi main.py masih memanggil fungsi ini.
+def initialize_ai_executor():
+    pass
+
+def shutdown_ai_executor():
+    pass
 
 # =====================================================
 # ZOMBIE
@@ -75,8 +89,8 @@ class Zombie(Entity):
         )
         self.world = world
         self.player = player
+        self.collision = False
         
-        # Stats
         self.scale = (0.9, 1.8) 
         self.max_health = config.ZOMBIE_MAX_HEALTH
         self.health = self.max_health
@@ -87,8 +101,7 @@ class Zombie(Entity):
         self.max_fall = config.MAX_FALL_SPEED
         self.y_vel = 0
         self.grounded = False
-
-        # AI
+        
         self.state = 'idle'
         self.path = []
         self.idx = 0
@@ -101,18 +114,20 @@ class Zombie(Entity):
         self.attack_range = config.ZOMBIE_ATTACK_RANGE
         self.attack_cooldown = config.ZOMBIE_ATTACK_COOLDOWN
         self.damage = config.ZOMBIE_DAMAGE
-
-        # Visual
+   
         target_w, target_h = 1.0, 2.0
         self.visual_scale_relative = (target_w / self.scale_x, target_h / self.scale_y)
         self.visual = Entity(parent=self, scale=self.visual_scale_relative, position=(0, 0, -0.1), double_sided=True)
+        self.zombie_graphics = None
         self.skin()
-        print(f"[SPAWN] Zombie at {self.position}")
 
     def skin(self):
-        self.zombie_graphics = SpriteSheetAnimation('../Assets/Sprite/Zombie.png', parent=self.visual, tileset_size=(8,1), fps=6, animations={'idle':((0,0),(0,0)), 'walk_right':((1,0),(3,0)), 'walk_left':((4,0),(7,0))})
-        self.zombie_graphics.play_animation('idle')
-        self.current_anim_state = 'idle'
+        # Load texture aman
+        tex = load_texture('Zombie.png') or load_texture('../Assets/Sprite/Zombie.png')
+        if tex:
+            self.zombie_graphics = SpriteSheetAnimation(tex, parent=self.visual, tileset_size=(8,1), fps=6, animations={'idle':((0,0),(0,0)), 'walk_right':((1,0),(3,0)), 'walk_left':((4,0),(7,0))})
+            self.zombie_graphics.play_animation('idle')
+            self.current_anim_state = 'idle'
 
     def get_light_level(self):
         x, y = int(round(self.x)), int(round(self.y))
@@ -124,22 +139,24 @@ class Zombie(Entity):
     def apply_lighting(self):
         lvl = max(0, min(14, self.get_light_level()))
         brightness = 0.1 + 0.9 * (lvl / 14.0) 
-        if hasattr(self, 'zombie_graphics'): self.zombie_graphics.color = color.white * brightness
+        if hasattr(self, 'zombie_graphics') and self.zombie_graphics: 
+            self.zombie_graphics.color = color.white * brightness
 
-    # --- FUNGSI PENTING: MENGHAPUS DENGAN AMAN ---
     def safe_destroy(self):
-        # 1. Cek apakah grafik masih ada
         if hasattr(self, 'zombie_graphics') and self.zombie_graphics:
-            # 2. Matikan sequence animasi
             if hasattr(self.zombie_graphics, 'sequence') and self.zombie_graphics.sequence:
-                self.zombie_graphics.sequence.finish()
-                self.zombie_graphics.sequence.kill()
+                try:
+                    self.zombie_graphics.sequence.finish()
+                    self.zombie_graphics.sequence.kill()
+                except:
+                    pass
                 self.zombie_graphics.sequence = None
             
-            # 3. Hapus referensi dictionary animasi agar destroy() bawaan tidak error
-            self.zombie_graphics.animations = None 
-            
-        # 4. Hapus entity fisik
+            # PENTING: Set ke list kosong [], bukan None. 
+            # Ursina akan mencoba loop variable ini. Jika None -> Error. Jika [] -> Aman (loop 0 kali).
+            if hasattr(self.zombie_graphics, 'animations'):
+                self.zombie_graphics.animations = [] 
+                  
         try:
             destroy(self)
         except:
@@ -147,8 +164,6 @@ class Zombie(Entity):
 
     def update(self):
         dt = time.dt
-        
-        # Despawn Logic
         if distance(self.position, self.player.position) > config.MOB_DESPAWN_RANGE:
             self.safe_destroy()
             return
@@ -159,22 +174,19 @@ class Zombie(Entity):
 
     def take_damage(self, amount):
         self.health -= amount
-        if hasattr(self, 'zombie_graphics'):
+        if hasattr(self, 'zombie_graphics') and self.zombie_graphics:
             self.zombie_graphics.color = color.red
             invoke(setattr, self.zombie_graphics, 'color', color.white, delay=0.2)
         
-        print(f"[ZOMBIE] Hit! HP: {self.health}")
         dir_to_player = self.x - self.player.x
         if dir_to_player != 0: self.x += (dir_to_player / abs(dir_to_player)) * 0.5
         if self.health <= 0: self.die()
 
     def die(self):
-        print("[ZOMBIE] Died")
         self.safe_destroy()
 
     def attack_player(self):
         self.attack_timer = self.attack_cooldown
-        print(f"[ZOMBIE] Attacking Player for {self.damage} dmg!")
         if hasattr(self.player, 'take_damage'): self.player.take_damage(self.damage)
 
         push_dir = 1 if self.player.x > self.x else -1
@@ -208,9 +220,9 @@ class Zombie(Entity):
         self.state = 'chase' if dist < 10 else 'idle'
         if self.path_timer > self.path_update_rate:
             self.path_timer = 0
-            start = (round(self.x), round(self.y))
+            start = (int(round(self.x)), int(round(self.y)))
             if self.state == 'chase':
-                tgt = (round(self.player.x), round(self.player.y))
+                tgt = (int(round(self.player.x)), int(round(self.player.y)))
                 if self.world.is_standable(tgt[0], tgt[1]):
                     p = astar(self.world, start, tgt)
                     if p: self.path = p; self.idx = 0
@@ -241,23 +253,23 @@ class Zombie(Entity):
         if move_x != 0:
             spd = self.run_speed if self.state == 'chase' else self.walk_speed
             self.x += move_x * spd * dt
-        
-        # VISUAL LOGIC
-        if move_x > 0: 
-            if self.current_anim_state != 'walk_right':
-                self.zombie_graphics.play_animation('walk_right')
-                self.current_anim_state = 'walk_right'
-            self.visual.scale_x = abs(self.visual_scale_relative[0])
-        elif move_x < 0: 
-            if self.current_anim_state != 'walk_left':
-                self.zombie_graphics.play_animation('walk_left')
-                self.current_anim_state = 'walk_left'
-            self.visual.scale_x = abs(self.visual_scale_relative[0])
-        else:
-            if self.current_anim_state != 'idle':
-                self.zombie_graphics.play_animation('idle')
-                self.current_anim_state = 'idle'
-            self.visual.scale_x = abs(self.visual_scale_relative[0])
+            
+        if self.zombie_graphics:
+            if move_x > 0: 
+                if self.current_anim_state != 'walk_right':
+                    self.zombie_graphics.play_animation('walk_right')
+                    self.current_anim_state = 'walk_right'
+                self.visual.scale_x = abs(self.visual_scale_relative[0])
+            elif move_x < 0: 
+                if self.current_anim_state != 'walk_left':
+                    self.zombie_graphics.play_animation('walk_left')
+                    self.current_anim_state = 'walk_left'
+                self.visual.scale_x = abs(self.visual_scale_relative[0])
+            else:
+                if self.current_anim_state != 'idle':
+                    self.zombie_graphics.play_animation('idle')
+                    self.current_anim_state = 'idle'
+                self.visual.scale_x = abs(self.visual_scale_relative[0])
         
         hit = raycast(self.position, Vec3(0,-1,0), distance=(self.scale_y/2)+0.1, traverse_target=self.world, ignore=(self,))
         is_ground = (hit.hit and hasattr(hit.entity, 'solid') and hit.entity.solid)
@@ -269,7 +281,6 @@ class Zombie(Entity):
             self.y_vel -= self.gravity * dt
             self.y_vel = max(self.y_vel, -self.max_fall)
         self.y += self.y_vel * dt
-
 
 # =====================================================
 # CHICKEN
@@ -288,8 +299,8 @@ class Chicken(Entity):
         )
         self.world = world
         self.player = player
+        self.collision = False
         
-        # Stats
         self.hp = config.CHICKEN_MAX_HEALTH
         self.walk_speed = config.CHICKEN_WALK_SPEED
         self.run_speed = config.CHICKEN_RUN_SPEED
@@ -308,8 +319,7 @@ class Chicken(Entity):
         self.idle_timer = 0.0
         self.walk_cd_min = config.CHICKEN_IDLE_MIN
         self.walk_cd_max = config.CHICKEN_IDLE_MAX
-
-        # Visual Setup
+       
         target_w, target_h = 1.0, 1.0 
         self.visual_scale_relative = (target_w / self.scale_x, target_h / self.scale_y)
         
@@ -319,34 +329,39 @@ class Chicken(Entity):
             position=(0, 0, -0.1),
             double_sided=True
         )
-
+        self.chicken_graphics = None
         self.skin()
-        print(f"[SPAWN] Chicken at {self.position}")
 
     def skin(self):
-        self.chicken_graphics = SpriteSheetAnimation(
-            '../Assets/Sprite/Ayam.png', 
-            parent=self.visual, 
-            tileset_size=(6,1), 
-            fps=6, 
-            animations={
-                'idle': ((0,0), (0,0)),
-                'walk': ((1,0), (5,0)),
-                'run':  ((1,0), (5,0)),
-            },
-            double_sided=True
-        )
-        self.chicken_graphics.play_animation('idle')
-        self.current_anim_state = 'idle'
+        tex = load_texture('Ayam.png') or load_texture('../Assets/Sprite/Ayam.png')
+        if tex:
+            self.chicken_graphics = SpriteSheetAnimation(
+                tex, 
+                parent=self.visual, 
+                tileset_size=(6,1), 
+                fps=6, 
+                animations={
+                    'idle': ((0,0), (0,0)),
+                    'walk': ((1,0), (5,0)),
+                    'run':  ((1,0), (5,0)),
+                },
+                double_sided=True
+            )
+            self.chicken_graphics.play_animation('idle')
+            self.current_anim_state = 'idle'
 
-    # --- FUNGSI PENTING: MENGHAPUS DENGAN AMAN ---
     def safe_destroy(self):
         if hasattr(self, 'chicken_graphics') and self.chicken_graphics:
             if hasattr(self.chicken_graphics, 'sequence') and self.chicken_graphics.sequence:
-                self.chicken_graphics.sequence.finish() # Stop sequence
-                self.chicken_graphics.sequence.kill()
+                try:
+                    self.chicken_graphics.sequence.finish() 
+                    self.chicken_graphics.sequence.kill()
+                except:
+                    pass
                 self.chicken_graphics.sequence = None
-            self.chicken_graphics.animations = None # Hapus dictionary
+            
+            if hasattr(self.chicken_graphics, 'animations'):
+                self.chicken_graphics.animations = [] 
         
         try:
             destroy(self)
@@ -379,11 +394,10 @@ class Chicken(Entity):
 
     def take_damage(self, dmg):
         self.hp -= dmg
-        if hasattr(self, 'chicken_graphics'):
+        if hasattr(self, 'chicken_graphics') and self.chicken_graphics:
             self.chicken_graphics.color = color.red
             invoke(setattr, self.chicken_graphics, 'color', color.white, delay=0.2)
 
-        print(f"[CHICKEN] Ouch! HP: {self.hp}")
         if self.hp <= 0: self.die(); return
         self.state = 'flee'
         self.flee_timer = self.flee_duration
@@ -391,15 +405,13 @@ class Chicken(Entity):
         self.run_away()
 
     def die(self):
-        print("[CHICKEN] Died -> Dropping Raw Chicken & Feather")
         if hasattr(self.player, 'inventory_system'):
             self.player.inventory_system.add_item(config.RAW_CHICKEN)
             self.player.inventory_system.add_item(config.FEATHER)
-        
         self.safe_destroy()
 
     def random_walk(self):
-        start = (round(self.x), round(self.y))
+        start = (int(round(self.x)), int(round(self.y)))
         for _ in range(6):
             rx = start[0] + random.randint(-6, 6)
             for ry in range(start[1]+2, start[1]-3, -1):
@@ -411,7 +423,7 @@ class Chicken(Entity):
             self.path = [(start[0]+step, start[1])]; self.idx = 0; self.state = 'walk'
 
     def run_away(self):
-        start = (round(self.x), round(self.y))
+        start = (int(round(self.x)), int(round(self.y)))
         primary_dir = 1 if self.player.x < self.x else -1
         directions_to_try = [primary_dir, -primary_dir]
         
@@ -420,19 +432,17 @@ class Chicken(Entity):
         
         for try_dir in directions_to_try:
             for dist in range(max_dist, min_dist - 1, -1):
-                target_x = round(self.x + (try_dir * dist))
+                target_x = int(round(self.x + (try_dir * dist)))
                 if not (0 <= target_x < config.WIDTH): continue
-                start_y_scan = round(self.y) + 8  
-                end_y_scan = round(self.y) - 8
+                start_y_scan = int(round(self.y)) + 8  
+                end_y_scan = int(round(self.y)) - 8
                 for ty in range(start_y_scan, end_y_scan, -1):
                     if not (0 <= ty < config.DEPTH): continue
                     if self.world.is_standable(target_x, ty):
                         path = bfs(self.world, start, (target_x, ty))
                         if path:
                             self.path = path; self.idx = 0
-                            print(f"[CHICKEN] Fleeing to ({target_x}, {ty})")
                             return
-        print("[CHICKEN] Cornered! Panic random walk.")
         self.random_walk()
 
     def move(self, dt):
@@ -450,21 +460,22 @@ class Chicken(Entity):
             self.x += move_x * spd * dt
         
         anim_to_play = 'run' if self.state == 'flee' else 'walk'
-        if move_x > 0: 
-            if self.current_anim_state != anim_to_play:
-                self.chicken_graphics.play_animation(anim_to_play)
-                self.current_anim_state = anim_to_play
-            self.visual.scale_x = abs(self.visual_scale_relative[0])
-        elif move_x < 0: 
-            if self.current_anim_state != anim_to_play:
-                self.chicken_graphics.play_animation(anim_to_play)
-                self.current_anim_state = anim_to_play
-            self.visual.scale_x = -abs(self.visual_scale_relative[0]) 
-        else:
-            if self.current_anim_state != 'idle':
-                self.chicken_graphics.play_animation('idle')
-                self.current_anim_state = 'idle'
-            self.visual.scale_x = abs(self.visual_scale_relative[0])
+        if self.chicken_graphics:
+            if move_x > 0: 
+                if self.current_anim_state != anim_to_play:
+                    self.chicken_graphics.play_animation(anim_to_play)
+                    self.current_anim_state = anim_to_play
+                self.visual.scale_x = abs(self.visual_scale_relative[0])
+            elif move_x < 0: 
+                if self.current_anim_state != anim_to_play:
+                    self.chicken_graphics.play_animation(anim_to_play)
+                    self.current_anim_state = anim_to_play
+                self.visual.scale_x = -abs(self.visual_scale_relative[0]) 
+            else:
+                if self.current_anim_state != 'idle':
+                    self.chicken_graphics.play_animation('idle')
+                    self.current_anim_state = 'idle'
+                self.visual.scale_x = abs(self.visual_scale_relative[0])
 
         hit = raycast(self.position, Vec3(0,-1,0), distance=(self.scale_y/2)+0.1, traverse_target=self.world, ignore=(self,))
         is_ground = (hit.hit and hasattr(hit.entity, 'solid') and hit.entity.solid)
@@ -477,9 +488,6 @@ class Chicken(Entity):
             self.y_vel = max(self.y_vel, -self.max_fall)
         self.y += self.y_vel * dt
 
-# =====================================================
-# SPAWNERS
-# =====================================================
 class ZombieSpawner:
     def __init__(self, world, player):
         self.world = world; self.player = player; self.timer = 0
@@ -489,7 +497,8 @@ class ZombieSpawner:
         self.timer += time.dt
         if self.timer >= self.spawn_rate: self.timer = 0; self.spawn()
     def spawn(self):
-        px, py = round(self.player.x), round(self.player.y)
+        if len([e for e in scene.entities if isinstance(e, Zombie)]) > 10: return
+        px, py = int(round(self.player.x)), int(round(self.player.y))
         for _ in range(30):
             dx = random.randint(-12,12); dy = random.randint(-6,6)
             if abs(dx) < 6: continue
@@ -507,7 +516,8 @@ class ChickenSpawner:
         self.timer += time.dt
         if self.timer >= self.spawn_rate: self.timer = 0; self.spawn()
     def spawn(self):
-        px, py = round(self.player.x), round(self.player.y)
+        if len([e for e in scene.entities if isinstance(e, Chicken)]) > 5: return
+        px, py = int(round(self.player.x)), int(round(self.player.y))
         for _ in range(20):
             dx = random.randint(-20,20); dy = random.randint(-6,6)
             if abs(dx) < 5: continue

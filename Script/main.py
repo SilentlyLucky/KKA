@@ -1,35 +1,27 @@
 from ursina import *
 from world import World
 from player import Player
-from mob import ZombieSpawner, ChickenSpawner
+from mob import ZombieSpawner, ChickenSpawner, initialize_ai_executor, shutdown_ai_executor # Import baru
 from config import *
 from scene import Scene
 from menu import *
 from save_system import save_game, load_game
 
-# --- Setup App ---
-app = Ursina()
-window.color = color.cyan
-window.borderless = False
-window.title = "Minecraft 2D - Zombie AI"
-
-# --- Setup Camera ---
-camera.orthographic = True
-camera.fov = 20
-
-# Game state
+# --- Global Variables (Initialized to None) ---
+app = None
 game_world = None
 player = None
 mouse_catcher = None
 game_over_ui = None
 pause_ui = None
 menu = None
+game_background = None 
+zombie_spawner = None
+chicken_spawner = None
 current_world_name = None
 current_world_type = None
 current_difficulty_state = "EASY"
 is_paused = False
-zombie_spawner = None
-chicken_spawner = None
 
 class GameInputController(Entity):
     def __init__(self):
@@ -68,15 +60,19 @@ class GameOverOverlay(Entity):
         self.enabled = True
 
 def cleanup_game():
-    global game_world, player, mouse_catcher, game_over_ui, pause_ui, zombie_spawner, chicken_spawner
+    global game_world, player, mouse_catcher, game_over_ui, pause_ui, zombie_spawner, chicken_spawner, game_background
     camera.scripts.clear()
     
-    for ent in (player, mouse_catcher, game_world, game_over_ui, pause_ui):
+    # Hapus semua entity game
+    entities_to_remove = [player, mouse_catcher, game_world, game_over_ui, pause_ui, game_background]
+    
+    for ent in entities_to_remove:
         if ent:
             try:
                 destroy(ent)
             except:
                 pass
+                
     game_world = None
     player = None
     mouse_catcher = None
@@ -84,8 +80,9 @@ def cleanup_game():
     pause_ui = None
     zombie_spawner = None
     chicken_spawner = None
+    game_background = None
 
-def start_new_game(name, world_type, difficulty ="EASY"):
+def start_new_game(name, world_type, difficulty="EASY"):
     global current_world_name, current_difficulty_state
     current_world_name = name
     current_difficulty_state = difficulty
@@ -109,7 +106,8 @@ def load_saved_game(name):
         back_to_menu()
 
 def launch_game_environment(world_type, save_data=None):
-    global game_world, player, mouse_catcher, game_over_ui, pause_ui, is_paused, menu, zombie_spawner, game_controller, chicken_spawner
+    global game_world, player, mouse_catcher, game_over_ui, pause_ui, is_paused, menu, zombie_spawner, game_controller, chicken_spawner, game_background
+    
     if menu:
         try:
             menu.destroy()
@@ -120,7 +118,14 @@ def launch_game_environment(world_type, save_data=None):
     cleanup_game()
     window.color = color.cyan
     is_paused = False
+    
+    # MATIKAN VSYNC untuk FPS maksimal (opsional, kadang bikin tearing tapi FPS naik)
+    window.vsync = False 
 
+    # 1. Setup Background (Parallax)
+    game_background = Scene()
+
+    # 2. Setup World
     game_world = World(world_type=world_type, save_data=save_data)
     game_world.update()
 
@@ -158,6 +163,15 @@ def launch_game_environment(world_type, save_data=None):
     zombie_spawner = ZombieSpawner(game_world, player)
     chicken_spawner = ChickenSpawner(game_world, player)
 
+    # 3. Setup Mouse Catcher
+    mouse_catcher = Entity(
+        model='quad', 
+        scale=999, 
+        color=color.clear, 
+        z=1000, 
+        collider='box'
+    )
+
     camera.scripts.clear()
     camera.add_script(SmoothFollow(target=player, offset=[0, 1, -30], speed=5))
 
@@ -173,16 +187,9 @@ def update():
     if chicken_spawner:
         chicken_spawner.update()
 
-
-mouse_catcher = Entity(
-    model='quad', 
-    scale=999, 
-    color=color.clear, 
-    z=1000, 
-    collider='box'
-)
-
 def exit_app():
+    # Bersihkan pool process sebelum keluar
+    shutdown_ai_executor()
     application.quit()
 
 def restart_game():
@@ -221,16 +228,14 @@ def resume_game():
 
 def save_and_exit_game():
     global current_world_name, current_difficulty_state
-    print("Saving... Current Global Difficulty is: {current_difficulty_state}")
+    print(f"Saving... Current Global Difficulty is: {current_difficulty_state}")
     if game_world and player and current_world_name:
         w_data = game_world.get_save_data()
         
-        # Simpan spawn point yang benar (dari variable spawn_x/y player)
         p_data = {
             "position": (player.x, player.y),
             "spawn_point": (player.spawn_x, player.spawn_y) 
         }
-        # Ambil data inventory dari player
         i_data = player.inventory_system.get_save_data()
         
         save_game(current_world_name, w_data, p_data, i_data, difficulty=current_difficulty_state)
@@ -239,9 +244,20 @@ def save_and_exit_game():
     resume_game() 
     back_to_menu()
 
-scene = Scene()
-
 # --- Initialize Menu ---
 if __name__ == '__main__':
+    app = Ursina()
+    
+    # Inisialisasi Multiprocessing Pool untuk AI
+    initialize_ai_executor()
+    
+    window.color = color.cyan
+    window.borderless = False
+    window.title = "Minecraft 2D - Zombie AI"
+    
+    camera.orthographic = True
+    camera.fov = 20
+    
     menu = Menu(on_start_new_callback=start_new_game, on_load_callback=load_saved_game, on_exit_callback=exit_app)
+    
     app.run()
