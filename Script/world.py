@@ -213,7 +213,7 @@ class World(Entity):
                          self.ore_map[(x, y)] = IRON_ORE
                          if x + 1 < WIDTH: self.ore_map[(x+1, y)] = IRON_ORE
                 if y < 10:
-                    if random.random() < 0.05: self.ore_map[(x, y)] = DIAMOND
+                    if random.random() < 0.05: self.ore_map[(x, y)] = DIAMOND_ORE
 
     def _touches_cave(self, x, y):
         neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]

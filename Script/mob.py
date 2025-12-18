@@ -70,7 +70,8 @@ class Zombie(Entity):
             color=color.clear, 
             origin_y=0,
             position=kwargs.get('position', (0,0)),
-            z=config.FG_Z
+            z=config.FG_Z,
+            collider='box'
         )
         self.world = world
         self.player = player
@@ -278,6 +279,7 @@ class Chicken(Entity):
         super().__init__(
             parent=scene,
             model='quad',
+            collider='box',
             color=color.clear, 
             origin_y=0,
             position=kwargs.get('position', (0,0)),
