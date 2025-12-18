@@ -414,7 +414,9 @@ class Player(Entity):
         if self.health <= 0: self.respawn(); self.health = self.max_health
 
     def respawn(self):
-        self.position = (int(WIDTH/2), self.world.surface_heights[int(WIDTH/2)] + 4)
+        print(f"[PLAYER] Respawn at ({self.spawn_x}, {self.spawn_y})")
+        self.position = (self.spawn_x, self.spawn_y)
         self.y_velocity = 0
-
+        self.health = self.max_health
+        self.dead = False
 
