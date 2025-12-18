@@ -4,8 +4,11 @@ from craft import check_recipe
 import math
 
 class Inventory(Entity):
-    def __init__(self, load_data=None, **kwargs):
+    def __init__(self, load_data=None, player_ref=None, **kwargs):
         super().__init__(parent=camera.ui)
+        
+        # Player reference for armor synchronization
+        self.player_ref = player_ref
         
         # --- DATA SYSTEM ---
         # Slot 0-8: Hotbar
@@ -56,24 +59,21 @@ class Inventory(Entity):
         )
         
         # > Main Inventory Grid (9x3) - Indeks 9 sampai 35
-        # Posisi di tengah panel
-        start_y = -0.042 # Turunkan sedikit agar masuk ke kotak inventory bawah
+        start_y = -0.042
         for row in range(3):
             for col in range(9):
                 idx = 9 + (row * 9) + col
                 s = self._create_slot(
                     parent=self.main_panel,
                     index=idx,
-                    x=(col - 4) * 0.0816, # Jarak antar kolom lebih rapat (asumsi)
-                    y=start_y - (row * 0.086) # Jarak antar baris
+                    x=(col - 4) * 0.0816,
+                    y=start_y - (row * 0.086)
                 )
                 self.slots.append(s)
 
         # > Armor Slots (4 Petak di Pojok Kiri Atas)
         armor_x = -0.323
         armor_start_y = 0.323
-        
-        """ self.armor_label = Text(parent=self.main_panel, text="Armor", x=armor_x, y=armor_start_y + 0.05, scale=1) """
         
         for i in range(4):
             idx = 41 + i
@@ -88,14 +88,12 @@ class Inventory(Entity):
             self.slots.append(s)
 
         # > Crafting Slots (2x2 di Pojok Kanan Atas)
-        """ self.crafting_label = Text(parent=self.main_panel, text="Crafting", x=0.2, y=0.35, scale=1) """
-        # Indeks 36-39
         craft_indices = [[36, 37], [38, 39]]
-        craft_x_start = 0.08  # Sesuaikan lagi dengan posisi kotak pada gambar
+        craft_x_start = 0.08
         craft_y_start = 0.275
         
-        slot_size = 0.08      # Ukuran dasar satu kotak
-        gap = 0.004           # <<< Atur besar celah di sini (semakin besar angkanya, semakin renggang)
+        slot_size = 0.08
+        gap = 0.004
 
         for row in range(2):
             for col in range(2):
@@ -103,12 +101,10 @@ class Inventory(Entity):
                 s = self._create_slot(
                     parent=self.main_panel,
                     index=idx, 
-                    # Rumus: Posisi Awal + (Indeks * (Ukuran + Gap))
                     x=craft_x_start + (col * (slot_size + gap)),
                     y=craft_y_start - (row * (slot_size + gap)),
                     col=color.rgba(0,0,0,0.1) 
                 )
-                # Pastikan scale slot di _create_slot konsisten dengan slot_size
                 s.scale = slot_size 
                 self.slots.append(s)
         
@@ -144,7 +140,6 @@ class Inventory(Entity):
             color=col,
             scale=scale,
             position=(x, y)
-            # on_click ditangani oleh input() global
         )
         slot.my_index = index 
         
@@ -217,15 +212,12 @@ class Inventory(Entity):
                 if item:
                     block_id = item['id']
                     count = item['count']
-                    # Ambil data dari BLOCK_DATA
                     data = BLOCK_DATA.get(block_id)
                     
                     if data and 'texture' in data:
-                        # SET TEXTURE
                         slot.item_icon.texture = data['texture']
-                        slot.item_icon.color = color.white # Pastikan warna putih agar tekstur tidak berubah
+                        slot.item_icon.color = color.white
                     else:
-                        # Fallback jika data atau tekstur tidak ditemukan
                         slot.item_icon.color = color.red
                     
                     slot.item_icon.visible = True
@@ -254,7 +246,6 @@ class Inventory(Entity):
             data = BLOCK_DATA.get(block_id)
             
             if data and 'texture' in data:
-                # SET TEXTURE
                 self.hand_icon.texture = data['texture']
                 self.hand_icon.color = color.white 
             else:
@@ -298,6 +289,10 @@ class Inventory(Entity):
                     self.items[index] = cursor_item
                     self.hand_item = clicked_item
         
+        # Sync armor with player when armor slot changes
+        if 41 <= index <= 44 and self.player_ref:
+            self.player_ref.on_armor_changed(index)
+        
         if 36 <= index <= 39: self.check_crafting()
         self.update_ui()
 
@@ -334,10 +329,15 @@ class Inventory(Entity):
                     self.items[index] = cursor_item
                     self.hand_item = clicked_item
 
+        # Sync armor with player when armor slot changes
+        if 41 <= index <= 44 and self.player_ref:
+            self.player_ref.on_armor_changed(index)
+            
         if 36 <= index <= 39: self.check_crafting()
         self.update_ui()
 
     def on_armor_slot_click(self, index):
+        """Handle armor slot clicks with validation"""
         valid_items = []
         if index == 41: valid_items = [IRON_HELMET, DIAMOND_HELMET]
         elif index == 42: valid_items = [IRON_CHESTPLATE, DIAMOND_CHESTPLATE]
@@ -345,11 +345,17 @@ class Inventory(Entity):
         elif index == 44: valid_items = [IRON_BOOTS, DIAMOND_BOOTS]
         
         cursor_item = self.hand_item
+        
+        # If empty hand, just pick up armor
         if cursor_item is None:
             self.on_slot_left_click(index)
             return
+        
+        # Only allow placing valid armor in this slot
         if cursor_item['id'] in valid_items:
-            self.on_slot_left_click(index) 
+            self.on_slot_left_click(index)
+        else:
+            print(f"Cannot place {BLOCK_DATA.get(cursor_item['id'], {}).get('name', 'item')} in this armor slot!")
 
     def check_crafting(self):
         grid = [
@@ -386,15 +392,13 @@ class Inventory(Entity):
             self.check_crafting()
             self.update_ui()
 
-    # --- HELPER BARU UNTUK CRAFTING TABLE EXTERNAL ---
     def add_item_dict(self, item_dict):
         """Menambahkan item (dict) ke inventory"""
         if not item_dict: return
         self.add_item(item_dict['id'], item_dict['count'])
 
     def add_item(self, block_id, count=1):
-        # PRIORITY 1: Stacking
-        # PERBAIKAN: Hanya scan 0-35 (Hotbar & Inventory) agar tidak stack ke crafting/armor
+        # PRIORITY 1: Stacking (only in hotbar & inventory, not crafting/armor)
         for i in range(36):
             item = self.items[i]
             if item and item['id'] == block_id and item['count'] < 64:
@@ -406,26 +410,25 @@ class Inventory(Entity):
                     self.update_ui()
                     return
 
-        # Jika masih ada sisa (karena stack penuh atau item baru)
+        # If still have remaining items
         while count > 0:
             new_item = {'id': block_id, 'count': min(count, 64)}
             placed = False
             
-            # PRIORITY 2: Hotbar Selected
-            # Pastikan selected_index dalam range valid dan slot KOSONG
+            # PRIORITY 2: Selected hotbar slot if empty
             sel_idx = self.selected_index
             if 0 <= sel_idx < 9 and self.items[sel_idx] is None:
                 self.items[sel_idx] = new_item
                 placed = True
             else:
-                # PRIORITY 3: Hotbar 0-8
+                # PRIORITY 3: Any empty hotbar slot
                 for i in range(9):
                     if self.items[i] is None:
                         self.items[i] = new_item
                         placed = True
                         break
                 
-                # PRIORITY 4: Inventory 9-35
+                # PRIORITY 4: Any empty inventory slot
                 if not placed:
                     for i in range(9, 36):
                         if self.items[i] is None:
@@ -489,7 +492,7 @@ class Inventory(Entity):
                 self.add_item_dict(self.hand_item)
                 self.hand_item = None
                 
-                # Kembalikan item crafting 2x2 ke inventory
+                # Return crafting items to inventory
                 for i in range(36, 40):
                     if self.items[i]:
                         self.add_item_dict(self.items[i])

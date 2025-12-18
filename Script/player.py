@@ -7,7 +7,7 @@ from craftingtable import CraftingTableUI
 from bed import set_spawn_point
 
 class Player(Entity):
-    def __init__(self, world_instance, on_death=None, inventory_data=None, saved_spawn_point=None, **kwargs):
+    def __init__(self, world_instance, inventory_data=None, saved_spawn_point=None, on_death=None, **kwargs):
         if 'position' not in kwargs:
             kwargs['position'] = (WIDTH/2, 20)
 
@@ -72,8 +72,8 @@ class Player(Entity):
         self.y_velocity = 0
         self.is_grounded = False
 
-        # Inventory
-        self.inventory_system = Inventory(load_data=inventory_data)
+        # Inventory (will be set up after armor system)
+        self.inventory_system = None
         
         # UI Crafting Table 3x3
         self.crafting_table_ui = CraftingTableUI(inventory_ref=self.inventory_system)
@@ -111,6 +111,14 @@ class Player(Entity):
             'boots': None
         }
         
+        # Map inventory slot index to armor slot name
+        self.armor_slot_mapping = {
+            41: 'helmet',
+            42: 'chestplate',
+            43: 'leggings',
+            44: 'boots'
+        }
+        
         self.max_armor = 20  # Max armor points (10 icons x 2 points each)
         self.armor = 0
         
@@ -137,7 +145,7 @@ class Player(Entity):
         # === HUNGER SYSTEM ===
         self.max_food = 20  # Max food points (10 icons x 2 points each)
         self.food = 20
-        self.food_depletion_rate = 0.2  # Points per second
+        self.food_depletion_rate = 0.5  # Points per second
         self.food_timer = 0
         self.starving = False
         self.starvation_damage_rate = 2.0  # Seconds between damage when starving
@@ -162,6 +170,15 @@ class Player(Entity):
                 color=color.white
             )
             self.food_icons.append(icon)
+
+        # NOW initialize inventory with player reference for armor sync
+        self.inventory_system = Inventory(load_data=inventory_data, player_ref=self)
+        
+        # UI Crafting Table 3x3
+        self.crafting_table_ui = CraftingTableUI(inventory_ref=self.inventory_system)
+        
+        # Sync armor from loaded inventory data
+        self.sync_armor_from_inventory()
 
     def is_solid_hit(self, hit):
         return (
@@ -199,43 +216,33 @@ class Player(Entity):
                 total += TOOL_ARMOR[item_id]
         return total
 
-    def equip_armor(self, item_id):
-        """Equip an armor piece"""
-        armor_slot = None
+    def sync_armor_from_inventory(self):
+        """Sync armor equipment from inventory armor slots (41-44)"""
+        for inv_index, slot_name in self.armor_slot_mapping.items():
+            item = self.inventory_system.items[inv_index]
+            if item:
+                self.equipped_armor[slot_name] = item['id']
+            else:
+                self.equipped_armor[slot_name] = None
         
-        # Determine which slot this armor goes in
-        if item_id in (IRON_HELMET, DIAMOND_HELMET):
-            armor_slot = 'helmet'
-        elif item_id in (IRON_CHESTPLATE, DIAMOND_CHESTPLATE):
-            armor_slot = 'chestplate'
-        elif item_id in (IRON_LEGGINGS, DIAMOND_LEGGINGS):
-            armor_slot = 'leggings'
-        elif item_id in (IRON_BOOTS, DIAMOND_BOOTS):
-            armor_slot = 'boots'
-        
-        if armor_slot:
-            # Return old armor to inventory if slot was occupied
-            old_armor = self.equipped_armor[armor_slot]
-            if old_armor:
-                self.inventory_system.add_item(old_armor)
-            
-            # Equip new armor
-            self.equipped_armor[armor_slot] = item_id
-            self.armor = self.calculate_armor()
-            print(f"Equipped {BLOCK_DATA[item_id]['name']} in {armor_slot} slot. Total armor: {self.armor}")
-            return True
-        return False
+        self.armor = self.calculate_armor()
+        self.update_armor_ui()  # Update the visual armor bar
+        print(f"[ARMOR SYNC] Total armor: {self.armor}")
 
-    def unequip_armor(self, slot_name):
-        """Remove armor from a specific slot"""
-        if slot_name in self.equipped_armor and self.equipped_armor[slot_name]:
-            item_id = self.equipped_armor[slot_name]
-            self.inventory_system.add_item(item_id)
-            self.equipped_armor[slot_name] = None
+    def on_armor_changed(self, slot_index):
+        """Called by inventory when armor slot changes"""
+        if slot_index in self.armor_slot_mapping:
+            slot_name = self.armor_slot_mapping[slot_index]
+            item = self.inventory_system.items[slot_index]
+            
+            if item:
+                self.equipped_armor[slot_name] = item['id']
+            else:
+                self.equipped_armor[slot_name] = None
+            
             self.armor = self.calculate_armor()
-            print(f"Unequipped {BLOCK_DATA[item_id]['name']}. Total armor: {self.armor}")
-            return True
-        return False
+            self.update_armor_ui()  # Update the visual armor bar
+            print(f"[ARMOR CHANGE] {slot_name}: {item['id'] if item else None} - Total armor: {self.armor}")
 
     def eat_food(self, item_id):
         """Consume food to restore hunger"""
@@ -398,16 +405,10 @@ class Player(Entity):
             return
         
         # Handle armor equipping and food eating with right-click
-        if key == 'f':  # Press F to equip armor or eat food from selected slot
+        if key == 'f':  # Press F to eat food from selected slot
             held_item_id = self.inventory_system.get_active_block()
             
             if held_item_id:
-                # Try to equip armor
-                if held_item_id in TOOL_ARMOR:
-                    if self.equip_armor(held_item_id):
-                        self.inventory_system.decrease_active_item()
-                        return
-                
                 # Try to eat food
                 if held_item_id in FOOD:
                     if self.eat_food(held_item_id):
