@@ -61,6 +61,18 @@ class World(Entity):
             "ore_map": self.ore_map
         }
 
+    def _calculate_height(self, x):
+        """Helper untuk menghitung ketinggian tanah berdasarkan biome"""
+        if self.world_type == "sand":
+            # Desert Terrain: Rolling dunes (Gurun: Gelombang lebih lebar dan landai)
+            # Menggunakan pembagi yang lebih besar (x/30, x/50) membuat gelombang lebih panjang
+            h = BASE_HEIGHT + int(math.sin(x / 30) * 12 + math.cos(x / 15) * 4)
+        else:
+            # Plains Terrain (Original): Bukit standar
+            h = BASE_HEIGHT + int(math.sin(x / 20) * 10 + math.cos(x / 10) * 5)
+            
+        return clamp(h, 5, DEPTH-1)
+
     def load_from_data(self, data):
         """Memuat data dari save file"""
         self.world_type = data["world_type"]
@@ -71,8 +83,7 @@ class World(Entity):
         # (Background butuh tahu di mana permukaan tanahnya)
         self.surface_heights = []
         for x in range(WIDTH):
-            h = BASE_HEIGHT + int(math.sin(x / 20) * 10 + math.cos(x / 10) * 5)
-            h = clamp(h, 5, DEPTH-1)
+            h = self._calculate_height(x)
             self.surface_heights.append(h)
 
     def generate_data(self):
@@ -81,8 +92,8 @@ class World(Entity):
         self.map_data = [[0 for y in range(DEPTH)] for x in range(WIDTH)]
         
         for x in range(WIDTH):
-            h = BASE_HEIGHT + int(math.sin(x / 20) * 10 + math.cos(x / 10) * 5)
-            h = clamp(h, 5, DEPTH-1)
+            # Menggunakan helper function agar konsisten dengan load_from_data
+            h = self._calculate_height(x)
             
             self.surface_heights.append(h)
             for y in range(DEPTH):
@@ -99,6 +110,7 @@ class World(Entity):
                 stone_level = self.surface_heights[x] - DIRT_LAYER_THICKNESS
                 if y < stone_level:
                     if self.world_type == "sand":
+                        # Gua di gurun mungkin sedikit lebih jarang atau bentuknya beda
                         cave_value = (
                             math.sin(x * 0.1) * math.cos(y * 0.1) 
                             + math.sin(x * 0.05) * math.cos(y * 0.15)
@@ -213,7 +225,7 @@ class World(Entity):
                          self.ore_map[(x, y)] = IRON_ORE
                          if x + 1 < WIDTH: self.ore_map[(x+1, y)] = IRON_ORE
                 if y < 10:
-                    if random.random() < 0.05: self.ore_map[(x, y)] = DIAMOND_ORE
+                    if random.random() < 0.05: self.ore_map[(x, y)] = DIAMOND
 
     def _touches_cave(self, x, y):
         neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
