@@ -85,7 +85,7 @@ RECIPES_3x3 = {
     ((None, None, None), (DIAMOND, None, DIAMOND), (DIAMOND, None, DIAMOND)): (DIAMOND_BOOTS, 1),
     
     ((None, None, None),
-     (PLANK, PLANK, PLANK),
+     (FEATHER, FEATHER, FEATHER),
      (PLANK, PLANK, PLANK)): (BED_ITEM, 1), 
 }
 
@@ -106,7 +106,7 @@ def check_shapeless_recipe(grid_items):
         item_id = items_present[0]
         if item_id == SAND:
             return (GLASS, 1)
-        if item_id == CHICKEN:
+        if item_id == RAW_CHICKEN:
             return (COOKED_CHICKEN, 1)
         # Log -> 4 Planks (Shapeless version for convenience)
         if item_id == LOG:
