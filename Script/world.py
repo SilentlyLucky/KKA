@@ -207,11 +207,11 @@ class World(Entity):
 
                 if (DEPTH * 0.3) < y < (DEPTH * 0.7):
                     if self._touches_cave(x, y):
-                        if random.random() < 0.20: self.ore_map[(x, y)] = COAL
+                        if random.random() < 0.20: self.ore_map[(x, y)] = COAL_ORE
                 if y < (DEPTH * 0.5):
                     if random.random() < 0.03: 
-                         self.ore_map[(x, y)] = IRON
-                         if x + 1 < WIDTH: self.ore_map[(x+1, y)] = IRON
+                         self.ore_map[(x, y)] = IRON_ORE
+                         if x + 1 < WIDTH: self.ore_map[(x+1, y)] = IRON_ORE
                 if y < 10:
                     if random.random() < 0.05: self.ore_map[(x, y)] = DIAMOND
 
@@ -229,7 +229,7 @@ class World(Entity):
     def update_chunk(self):
         cam_x = int(camera.x)
         cam_y = int(camera.y)
-        
+
         if abs(cam_x - self.prev_cam_x) < 1 and abs(cam_y - self.prev_cam_y) < 1:
             return
 
@@ -247,20 +247,22 @@ class World(Entity):
                 pos = (x, y)
                 if pos not in self.bg_dict:
                     self._render_single_bg(x, y)
-                
+
                 if pos not in self.block_dict and self.map_data[x][y] != 0:
                     self._render_single_block(x, y)
 
         # UNLOAD
         unload_dist_x = VIEW_DISTANCE_X + 5
         unload_dist_y = VIEW_DISTANCE_Y + 5
-        
+
         to_remove_fg = []
         for pos, entity in self.block_dict.items():
+            if getattr(entity, 'persistent', False):
+                continue
             if (abs(pos[0] - cam_x) > unload_dist_x or 
                 abs(pos[1] - cam_y) > unload_dist_y):
                 to_remove_fg.append(pos)
-        
+
         for pos in to_remove_fg:
             ent = self.block_dict.pop(pos)
             if ent in self.blocks: self.blocks.remove(ent)
@@ -272,7 +274,7 @@ class World(Entity):
             if (abs(pos[0] - cam_x) > unload_dist_x or 
                 abs(pos[1] - cam_y) > unload_dist_y):
                 to_remove_bg.append(pos)
-                
+
         for pos in to_remove_bg:
             ent = self.bg_dict.pop(pos)
             destroy(ent)
@@ -308,7 +310,7 @@ class World(Entity):
 
     def _render_single_block(self, x, y):
         block_val = self.map_data[x][y]
-        
+
         target_parent = self.fg_parent
         tipe = STONE
         is_trigger = False
@@ -319,35 +321,42 @@ class World(Entity):
             target_parent = self.plant_parent
             z_pos = PLANT_Z
             is_trigger = True
-        
+
         elif block_val == DIRT: 
             tipe = DIRT
-            
+
         elif block_val == 1: 
             h = self.surface_heights[x]
             dirt_start_y = h - DIRT_LAYER_THICKNESS
             is_desert = self._is_desert_biome(x)
-            
+
             if y == 0:
                 tipe = BEDROCK
             elif y == h - 1:
                 tipe = SAND if is_desert else GRASS
             elif y >= dirt_start_y:
                 tipe = SAND if is_desert else DIRT
-            
+
             if tipe == STONE and (x, y) in self.ore_map:
                 tipe = self.ore_map[(x, y)]
 
         b = Block(position=(x, y), block_type=tipe)
         b.parent = target_parent
         b.z = z_pos 
-        
+
         if is_trigger:
             b.collider.is_trigger = True
-        
+
         self.blocks.append(b)
         self.block_positions.add((x, y))
         self.block_dict[(x, y)] = b
+
+        lvl = (
+            self.light_map[x][y]
+            if self.map_data[x][y] == 0
+            else self._light_for_solid(x, y)
+        )
+        b.set_light_level(lvl)
 
     def place_block(self, x, y, block_type):
         if (x,y) in self.block_dict:

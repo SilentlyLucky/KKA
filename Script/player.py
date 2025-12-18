@@ -63,10 +63,12 @@ class Player(Entity):
         )
 
         # Physics Stats
-        self.walk_speed = 5
-        self.jump_force = 12
-        self.gravity = 30
-        self.max_fall_speed = 20
+        self.walk_speed = PLAYER_WALK_SPEED
+        self.jump_force = PLAYER_JUMP_FORCE
+        self.gravity = GLOBAL_GRAVITY
+        self.max_fall_speed = MAX_FALL_SPEED
+        self.attack_range = PLAYER_ATTACK_RANGE
+        
         self.y_velocity = 0
         self.is_grounded = False
 
@@ -101,6 +103,33 @@ class Player(Entity):
             )
             self.hearts.append(heart)
 
+                # Armor Stats
+        self.max_armor = 100 # 10 icons, each representing 2 armor points
+        self.armor = 0     # Current armor value (example: starting with 5 icons)
+        
+        # Load Armor textures
+        self.armor_full_tex = load_texture('../Assets/Interface/Armor_Full.png')
+        self.armor_half_tex = load_texture('../Assets/Interface/Armor_Half.png')
+        self.armor_empty_tex = load_texture('../Assets/Interface/Armor_Empty.png')
+
+        # Armor UI Container (Top Right)
+        # We use x=0.7 to move it to the right side of the screen
+        self.armor_container = Entity(parent=camera.ui, position=(0.8, 0.45), scale=1)
+        self.armor_icons = []
+        
+        armor_spacing = 0.04 
+        for i in range(10): # 10 armor icons
+            icon = Entity(
+                parent=self.armor_container,
+                model='quad',
+                texture=self.armor_full_tex,
+                scale=(0.03, 0.03),
+                # We subtract i * spacing to make the icons grow from right to left
+                position=(-i * armor_spacing, 0, 0),
+                color=color.white
+            )
+            self.armor_icons.append(icon)
+
 
     def is_solid_hit(self, hit):
         return (
@@ -131,7 +160,6 @@ class Player(Entity):
             self.player_graphics.color = color.white * brightness
 
     def update(self):
-        
         self.z = FG_Z 
         
         if mouse.world_point:
@@ -151,6 +179,7 @@ class Player(Entity):
         dt = time.dt
         self.apply_environment_light()
         self.update_health_ui()
+        self.update_armor_ui()
         if self.y < -20: self.take_damage(20); self.respawn()
 
         # ====================================================
@@ -263,24 +292,25 @@ class Player(Entity):
                 self.is_grounded = False
 
         if key == 'left mouse down':
+            if mouse.hovered_entity and hasattr(mouse.hovered_entity, 'take_damage'):
+                if distance(self.position, mouse.hovered_entity.position) <= self.attack_range:
+                    held_item_id = self.inventory_system.get_active_block()
+                    dmg = TOOL_DAMAGE.get(held_item_id, 1) 
+                    mouse.hovered_entity.take_damage(dmg)
+                    return 
+                
             if mouse.hovered_entity and isinstance(mouse.hovered_entity, Block): 
                 if distance(self.position, mouse.hovered_entity.position) < 5:
                     block_type = mouse.hovered_entity.block_type
 
-                    # --- LOGIKA MINING TIER ---
-                        
-                    # 1. Tentukan Level Pickaxe yang sedang dipegang
                     held_item_id = self.inventory_system.get_active_block()
                     
-                    # Level: 0=Tangan, 1=Wood, 2=Stone, 3=Iron, 4=Diamond
                     tool_power = 0
                     
                     if held_item_id == WOODEN_PICKAXE: tool_power = 1
                     elif held_item_id == IRON_PICKAXE: tool_power = 3
                     elif held_item_id == DIAMOND_PICKAXE: tool_power = 4
                     
-                    # 2. Tentukan Kekerasan Block (Requirement)
-                    # Level: 0=Lunak(Tanah/Kayu), 1=Batu/Coal, 2=Iron, 3=Diamond, 999=Bedrock
                     block_hardness = 0 
                     
                     if block_type in (STONE, COAL, IRON):
@@ -288,9 +318,8 @@ class Player(Entity):
                     elif block_type == DIAMOND:
                         block_hardness = 3
                     elif block_type == BEDROCK:
-                        block_hardness = 999 # Tidak bisa hancur
+                        block_hardness = 999
                     
-                    # 3. Cek Apakah Kuat
                     can_break = tool_power >= block_hardness
                     
                     if can_break:
@@ -307,7 +336,7 @@ class Player(Entity):
                             self.inventory_system.add_item(item_to_give)
                     else:
                         # Opsional: Beri efek visual/suara kalau gagal break
-                        print("Pickaxe not strong enough!") 
+                        print("Not strong enough!") 
 
         if key == 'right mouse down':
             print("=== RIGHT MOUSE CLICKED ===")
@@ -390,9 +419,9 @@ class Player(Entity):
         """Update Minecraft-style hearts based on current health"""
         
         for i in range(self.max_hearts):
-            heart_hp_threshold = (i + 1) * 2 
-            heart_hp_min = i * 2  
-            
+            heart_hp_threshold = (i + 1) * 10 
+            heart_hp_min = i * 10
+
             if self.health >= heart_hp_threshold:
                 # Full heart
                 self.hearts[i].texture = self.heart_full_tex
@@ -406,6 +435,26 @@ class Player(Entity):
                 self.hearts[i].texture = self.heart_empty_tex
                 self.hearts[i].enabled = True
 
+    def update_armor_ui(self):
+        """Update Minecraft-style armor icons based on current armor"""
+
+        for i in range(10): # 10 armor icons
+            armor_hp_threshold = (i + 1) * 10 
+            armor_hp_min = i * 10
+
+            if self.armor >= armor_hp_threshold:
+                # Full armor icon
+                self.armor_icons[i].texture = self.armor_full_tex
+                self.armor_icons[i].enabled = True
+            elif self.armor > armor_hp_min:
+                # Half armor icon
+                self.armor_icons[i].texture = self.armor_half_tex
+                self.armor_icons[i].enabled = True
+            else:
+                # Empty armor icon
+                self.armor_icons[i].texture = self.armor_empty_tex
+                self.armor_icons[i].enabled = True
+
     def take_damage(self, amount):
         self.health -= amount
         self.visual.color = color.red
@@ -415,5 +464,4 @@ class Player(Entity):
     def respawn(self):
         self.position = (int(WIDTH/2), self.world.surface_heights[int(WIDTH/2)] + 4)
         self.y_velocity = 0
-
 

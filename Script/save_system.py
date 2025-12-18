@@ -10,7 +10,7 @@ if not os.path.exists(SAVE_FOLDER):
 def get_save_path(world_name):
     return os.path.join(SAVE_FOLDER, f"{world_name}.ursinasave")
 
-def save_game(world_name, world_data, player_data, inventory_data):
+def save_game(world_name, world_data, player_data, inventory_data, difficulty="EASY"):
     """
     Menyimpan data world dan player ke file.
     """
@@ -21,13 +21,14 @@ def save_game(world_name, world_data, player_data, inventory_data):
         "player_pos": player_data["position"],
         "spawn_point": player_data["spawn_point"],
         "inventory": inventory_data, 
-        "seed": world_data.get("seed", 42)
+        "seed": world_data.get("seed", 42),
+        "difficulty": difficulty
     }
     
     try:
         with open(get_save_path(world_name), "wb") as f:
             pickle.dump(data, f)
-        print(f"Game saved successfully: {world_name}")
+        print(f"Game saved successfully: {world_name} [{difficulty}]")
         return True
     except Exception as e:
         print(f"Failed to save game: {e}")
@@ -93,3 +94,17 @@ def rename_world(old_name, new_name):
     except Exception as e:
         print(f"Error renaming world: {e}")
         return False
+    
+def update_world_difficulty(world_name, new_difficulty):
+    data = load_game(world_name)
+    if data:
+        data['difficulty'] = new_difficulty
+        try:
+            with open(get_save_path(world_name), "wb") as f:
+                pickle.dump(data, f)
+            print(f"World '{world_name}' difficulty updated to {new_difficulty}")
+            return True
+        except Exception as e:
+            print(f"Error updating difficulty: {e}")
+            return False
+    return False

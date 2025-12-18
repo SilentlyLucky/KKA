@@ -31,7 +31,7 @@ BED_BLOCK = 15 # Blok tempat tidur yang sudah ditaruh (Head/Foot bisa kompleks, 
 STICK = 100
 TORCH = 101
 BED_ITEM = 102 # Item tempat tidur di tangan
-RAW_CHICKEN = 103
+CHICKEN = 103
 COOKED_CHICKEN = 104
 FEATHER = 105
 
@@ -96,9 +96,9 @@ BLOCK_DATA = {
     BED_BLOCK: {'name': 'Bed', 'texture': '../Assets/Textures/bed_side.png', 'solid': True}, # Visual di world
     STICK: {'name': 'Stick', 'texture': '../Assets/Icons/Materials/Stick.png', 'solid': False},
     BED_ITEM: {'name': 'Bed Item', 'texture': '../Assets/Icons/Furniture/Red_Bed.png', 'solid': False}, # Item tempat tidur di tangan
-    RAW_CHICKEN: {'name': 'Raw Chicken', 'texture': '../Assets/Icons/Item/Raw_Chicken.png', 'solid': False},
+    CHICKEN: {'name': 'Chicken', 'texture': '../Assets/Icons/Food/Chicken.png', 'solid': False},
     COOKED_CHICKEN: {'name': 'Cooked Chicken', 'texture': '../Assets/Icons/Item/Cooked_Chicken.png', 'solid': False},
-    FEATHER: {'name': 'Feather', 'texture': '../Assets/Icons/Item/Feather.png', 'solid': False},
+    FEATHER: {'name': 'Feather', 'texture': '../Assets/Icons/Materials/Feather.png', 'solid': False},
 
     DIAMOND: {'name': 'Diamond Gem', 'texture': '../Assets/Icons/Materials/Diamond.png', 'solid': False},
     COAL: {'name': 'Coal Item', 'texture': '../Assets/Icons/Materials/Coal.png', 'solid': False},
@@ -147,41 +147,30 @@ FG_Z = 0.0
 PLAYER_VISUAL_Z = -0.1
 
 # --- GAMEPLAY ---
-PLAYER_MAX_HEALTH = 100
-ZOMBIE_DAMAGE = 10
-ZOMBIE_ATTACK_RANGE = 1.2
-ZOMBIE_ATTACK_COOLDOWN = 1.0
-
-# ==========================================
-# PHYSICS & ENTITY CONFIGURATION
-# ==========================================
-
 # --- GLOBAL PHYSICS ---
 GLOBAL_GRAVITY = 30
 MAX_FALL_SPEED = 20
 
-# --- PLAYER STATS ---
-PLAYER_MAX_HEALTH = 100
+# --- PLAYER STATS (DEFAULT) ---
 PLAYER_WALK_SPEED = 5
 PLAYER_JUMP_FORCE = 12
 PLAYER_ATTACK_RANGE = 4.0
+PLAYER_MAX_HEALTH = 100
 
-MOB_DESPAWN_RANGE = 40
-
-# --- ZOMBIE STATS ---
+# --- ZOMBIE STATS (DEFAULT) ---
 ZOMBIE_MAX_HEALTH = 20
 ZOMBIE_WALK_SPEED = 1.5
 ZOMBIE_RUN_SPEED = 3.5
-ZOMBIE_JUMP_FORCE = 8
+ZOMBIE_JUMP_FORCE = 12
 ZOMBIE_ATTACK_RANGE = 1.2
 ZOMBIE_ATTACK_COOLDOWN = 1.0
 ZOMBIE_DAMAGE = 10
 ZOMBIE_IDLE_MIN = 1.5       
 ZOMBIE_IDLE_MAX = 3.5       
 ZOMBIE_PATH_UPDATE_RATE = 0.3 
-ZOMBIE_SPAWN_RATE = 15.0     
+ZOMBIE_SPAWN_RATE = 3.0     
 
-# --- CHICKEN STATS ---
+# --- CHICKEN STATS (DEFAULT) ---
 CHICKEN_MAX_HEALTH = 4
 CHICKEN_WALK_SPEED = 2.0
 CHICKEN_RUN_SPEED = 4.0
@@ -189,22 +178,67 @@ CHICKEN_JUMP_FORCE = 8
 CHICKEN_IDLE_MIN = 1.0
 CHICKEN_IDLE_MAX = 3.0
 CHICKEN_FLEE_DURATION = 4.0
-CHICKEN_FLEE_DISTANCE = 8   # NEW: How far the chicken tries to run (blocks)
+CHICKEN_FLEE_DISTANCE = 8   
 CHICKEN_SPAWN_RATE = 15.0
+MOB_DESPAWN_RANGE = 60
 
 # --- TOOL DAMAGE VALUES ---
 TOOL_DAMAGE = {
-    WOODEN_SWORD: 4, 
-    IRON_SWORD: 6,
-    DIAMOND_SWORD: 7,
-    
-    WOODEN_AXE: 3, 
-    IRON_AXE: 5, 
-    DIAMOND_AXE: 6,
-    
-    WOODEN_PICKAXE: 2, 
-    IRON_PICKAXE: 4, 
-    DIAMOND_PICKAXE: 5,
-    
+    WOODEN_SWORD: 4, IRON_SWORD: 6, DIAMOND_SWORD: 7,
+    WOODEN_AXE: 3, IRON_AXE: 5, DIAMOND_AXE: 6,
+    WOODEN_PICKAXE: 2, IRON_PICKAXE: 4, DIAMOND_PICKAXE: 5,
     0: 1 
 }
+
+def set_difficulty(difficulty):
+    global PLAYER_MAX_HEALTH
+    global ZOMBIE_MAX_HEALTH, ZOMBIE_WALK_SPEED, ZOMBIE_RUN_SPEED, ZOMBIE_JUMP_FORCE
+    global ZOMBIE_DAMAGE, ZOMBIE_ATTACK_COOLDOWN, ZOMBIE_SPAWN_RATE
+    global ZOMBIE_ATTACK_RANGE, ZOMBIE_IDLE_MIN, ZOMBIE_IDLE_MAX, ZOMBIE_PATH_UPDATE_RATE
+    global CHICKEN_SPAWN_RATE
+
+    print(f"[CONFIG] Applying Difficulty: {difficulty}")
+
+    if difficulty == 'EASY':
+        # Player Buff
+        PLAYER_MAX_HEALTH = 150
+        
+        # Zombie Nerf
+        ZOMBIE_MAX_HEALTH = 15          # Empuk
+        ZOMBIE_WALK_SPEED = 1.0         # Lambat
+        ZOMBIE_RUN_SPEED = 2.5          # Mudah dikejar/kabur
+        ZOMBIE_JUMP_FORCE = 8
+        ZOMBIE_DAMAGE = 5               # Damage kecil
+        ZOMBIE_ATTACK_COOLDOWN = 1.5    # Serangan lambat
+        ZOMBIE_SPAWN_RATE = 10.0         # Jarang muncul
+        
+        # Zombie AI Dumbed Down
+        ZOMBIE_ATTACK_RANGE = 1.2
+        ZOMBIE_IDLE_MIN = 2.0
+        ZOMBIE_IDLE_MAX = 5.0
+        ZOMBIE_PATH_UPDATE_RATE = 0.5 
+
+        # Chicken Buff (More Food)
+        CHICKEN_SPAWN_RATE = 10.0       
+
+    elif difficulty == 'HARD':
+        # Player Standard
+        PLAYER_MAX_HEALTH = 100
+        
+        # Zombie Buff (Horde Mode)
+        ZOMBIE_MAX_HEALTH = 30          # Keras
+        ZOMBIE_WALK_SPEED = 1.8         # Cepat
+        ZOMBIE_RUN_SPEED = 3.5          # Sangat cepat (hampir secepat player)
+        ZOMBIE_JUMP_FORCE = 12
+        ZOMBIE_DAMAGE = 15              # Sakit
+        ZOMBIE_ATTACK_COOLDOWN = 0.8    # Serangan cepat
+        ZOMBIE_SPAWN_RATE = 8.0         # Muncul sangat sering
+        
+        # Zombie AI Aggressive
+        ZOMBIE_ATTACK_RANGE = 1.5
+        ZOMBIE_IDLE_MIN = 0.5
+        ZOMBIE_IDLE_MAX = 2.0
+        ZOMBIE_PATH_UPDATE_RATE = 0.2 
+
+        # Chicken Nerf (Food Scarcity)
+        CHICKEN_SPAWN_RATE = 20.0       # Makanan langka
