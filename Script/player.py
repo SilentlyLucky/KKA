@@ -35,8 +35,8 @@ class Player(Entity):
         target_visual_width = 1.0
         target_visual_height = 2.0
         
-        calc_scale_x = (target_visual_width / self.scale_x)# 1.0 / 0.9 = 1.111...
-        calc_scale_y = (target_visual_height / self.scale_y)# 2.0 / 1.8 = 1.111...
+        calc_scale_x = (target_visual_width / self.scale_x)
+        calc_scale_y = (target_visual_height / self.scale_y)
         
         self.visual = Entity(
             parent=self,
@@ -84,14 +84,14 @@ class Player(Entity):
         self.health = self.max_health
         self.heart_container = Entity(parent=camera.ui, position=(-0.7, 0.45), scale=1)
         self.hearts = []
-        self.max_hearts = 10  # 10 hearts = 20 health (each heart = 2 HP)
+        self.max_hearts = 10
 
         # Load heart textures
         self.heart_empty_tex = load_texture('../Assets/Interface/Heart_Empty.png')
         self.heart_half_tex = load_texture('../Assets/Interface/Heart_Half.png')
         self.heart_full_tex = load_texture('../Assets/Interface/Heart_Full.png')
 
-        heart_spacing = 0.04  # Spacing between hearts
+        heart_spacing = 0.04
         for i in range(self.max_hearts):
             heart = Entity(
                 parent=self.heart_container,
@@ -103,60 +103,65 @@ class Player(Entity):
             )
             self.hearts.append(heart)
 
-        # Armor Stats
-        self.max_armor = 100 # 10 icons, each representing 2 armor points
-        self.armor = 0     # Current armor value (example: starting with 5 icons)
+        # === ARMOR SYSTEM ===
+        self.equipped_armor = {
+            'helmet': None,
+            'chestplate': None,
+            'leggings': None,
+            'boots': None
+        }
+        
+        self.max_armor = 20  # Max armor points (10 icons x 2 points each)
+        self.armor = 0
         
         # Load Armor textures
         self.armor_full_tex = load_texture('../Assets/Interface/Armor_Full.png')
         self.armor_half_tex = load_texture('../Assets/Interface/Armor_Half.png')
         self.armor_empty_tex = load_texture('../Assets/Interface/Armor_Empty.png')
 
-        # Armor UI Container (Top Right)
-        # We use x=0.7 to move it to the right side of the screen
         self.armor_container = Entity(parent=camera.ui, position=(0.8, 0.45), scale=1)
         self.armor_icons = []
         
         armor_spacing = 0.04 
-        for i in range(10): # 10 armor icons
+        for i in range(10):
             icon = Entity(
                 parent=self.armor_container,
                 model='quad',
-                texture=self.armor_full_tex,
+                texture=self.armor_empty_tex,
                 scale=(0.03, 0.03),
-                # We subtract i * spacing to make the icons grow from right to left
                 position=(-i * armor_spacing, 0, 0),
                 color=color.white
             )
             self.armor_icons.append(icon)
 
-        # food Stats
-        self.max_food = 100 # 10 icons, each representing 2 food points
-        self.food = 100     # Current food value (example: starting with 5 icons)
+        # === HUNGER SYSTEM ===
+        self.max_food = 20  # Max food points (10 icons x 2 points each)
+        self.food = 20
+        self.food_depletion_rate = 0.5  # Points per second
+        self.food_timer = 0
+        self.starving = False
+        self.starvation_damage_rate = 2.0  # Seconds between damage when starving
+        self.starvation_timer = 0
         
         # Load food textures
         self.food_full_tex = load_texture('../Assets/Interface/Food_Full.png')
         self.food_half_tex = load_texture('../Assets/Interface/Food_Half.png')
         self.food_empty_tex = load_texture('../Assets/Interface/Food_Empty.png')
 
-        # food UI Container (Top Right)
-        # We use x=0.7 to move it to the right side of the screen
         self.food_container = Entity(parent=camera.ui, position=(-0.34, 0.4), scale=1)
         self.food_icons = []
         
         food_spacing = 0.04 
-        for i in range(10): # 10 food icons
+        for i in range(10):
             icon = Entity(
                 parent=self.food_container,
                 model='quad',
                 texture=self.food_full_tex,
                 scale=(0.03, 0.03),
-                # We subtract i * spacing to make the icons grow from right to left
                 position=(-i * food_spacing, 0, 0),
                 color=color.white
             )
             self.food_icons.append(icon)
-
 
     def is_solid_hit(self, hit):
         return (
@@ -186,6 +191,90 @@ class Player(Entity):
         else:
             self.player_graphics.color = color.white * brightness
 
+    def calculate_armor(self):
+        """Calculate total armor from equipped pieces"""
+        total = 0
+        for slot, item_id in self.equipped_armor.items():
+            if item_id and item_id in TOOL_ARMOR:
+                total += TOOL_ARMOR[item_id]
+        return total
+
+    def equip_armor(self, item_id):
+        """Equip an armor piece"""
+        armor_slot = None
+        
+        # Determine which slot this armor goes in
+        if item_id in (IRON_HELMET, DIAMOND_HELMET):
+            armor_slot = 'helmet'
+        elif item_id in (IRON_CHESTPLATE, DIAMOND_CHESTPLATE):
+            armor_slot = 'chestplate'
+        elif item_id in (IRON_LEGGINGS, DIAMOND_LEGGINGS):
+            armor_slot = 'leggings'
+        elif item_id in (IRON_BOOTS, DIAMOND_BOOTS):
+            armor_slot = 'boots'
+        
+        if armor_slot:
+            # Return old armor to inventory if slot was occupied
+            old_armor = self.equipped_armor[armor_slot]
+            if old_armor:
+                self.inventory_system.add_item(old_armor)
+            
+            # Equip new armor
+            self.equipped_armor[armor_slot] = item_id
+            self.armor = self.calculate_armor()
+            print(f"Equipped {BLOCK_DATA[item_id]['name']} in {armor_slot} slot. Total armor: {self.armor}")
+            return True
+        return False
+
+    def unequip_armor(self, slot_name):
+        """Remove armor from a specific slot"""
+        if slot_name in self.equipped_armor and self.equipped_armor[slot_name]:
+            item_id = self.equipped_armor[slot_name]
+            self.inventory_system.add_item(item_id)
+            self.equipped_armor[slot_name] = None
+            self.armor = self.calculate_armor()
+            print(f"Unequipped {BLOCK_DATA[item_id]['name']}. Total armor: {self.armor}")
+            return True
+        return False
+
+    def eat_food(self, item_id):
+        """Consume food to restore hunger"""
+        if item_id in FOOD:
+            food_value = FOOD[item_id]
+            old_food = self.food
+            self.food = min(self.max_food, self.food + food_value)
+            
+            # Also restore small amount of health when eating
+            if self.food >= self.max_food:
+                self.health = min(self.max_health, self.health + 1)
+            
+            print(f"Ate {BLOCK_DATA[item_id]['name']}. Hunger: {old_food} -> {self.food}")
+            return True
+        return False
+
+    def update_hunger(self, dt):
+        """Update hunger system - depletes over time"""
+        # Deplete food over time
+        self.food_timer += dt
+        if self.food_timer >= 1.0:  # Every second
+            self.food = max(0, self.food - self.food_depletion_rate)
+            self.food_timer = 0
+        
+        # Starvation damage when food reaches 0
+        if self.food <= 0:
+            if not self.starving:
+                self.starving = True
+                print("You are starving!")
+            
+            self.starvation_timer += dt
+            if self.starvation_timer >= self.starvation_damage_rate:
+                self.take_damage(1)
+                self.starvation_timer = 0
+                print("Starvation damage!")
+        else:
+            self.starving = False
+            self.starvation_timer = 0
+
     def update(self):
         self.z = FG_Z 
         
@@ -207,13 +296,14 @@ class Player(Entity):
         self.apply_environment_light()
         self.update_health_ui()
         self.update_armor_ui()
-        if self.y < -20: self.take_damage(20); self.respawn()
+        self.update_food_ui()
+        self.update_hunger(dt)  # Add hunger depletion
+        
+        if self.y < -20: 
+            self.take_damage(20)
+            self.respawn()
 
-        # ====================================================
-        # CUSTOM PHYSICS (0.9 x 1.8)
-        # ====================================================
-
-        # --- 1. HORIZONTAL ---
+        # HORIZONTAL MOVEMENT
         dx = held_keys['d'] - held_keys['a']
         move_amount = dx * self.walk_speed * dt
         
@@ -232,7 +322,7 @@ class Player(Entity):
             if not hit_wall:
                 self.x += move_amount
 
-        # --- ANIMATION LOGIC (Moved to update) ---
+        # ANIMATION
         if dx > 0:
             if self.current_anim_state != 'walk_right':
                 self.player_graphics.play_animation('walk_right')
@@ -248,7 +338,7 @@ class Player(Entity):
                 self.player_graphics.play_animation('idle')
                 self.current_anim_state = 'idle' 
 
-        # --- 2. VERTICAL ---
+        # VERTICAL PHYSICS
         ray_origin_y = 0 
         ray_direction = Vec3(0, -1, 0)
         ray_dist = (self.scale_y / 2) + 0.1
@@ -289,7 +379,7 @@ class Player(Entity):
 
     def skin(self):
         self.player_graphics = SpriteSheetAnimation('../Assets/Sprite/MC.png', parent=self.visual, tileset_size=(7,1), fps=8, animations={
-            'idle' : ((0,0), (0,0)),        # makes an animation from (0,0) to (0,0), a single frame
+            'idle' : ((0,0), (0,0)),
             'walk_right' : ((1,0), (3,0)),
             'walk_left' : ((4,0), (6,0)),
             }
@@ -306,6 +396,23 @@ class Player(Entity):
             else:
                 self.inventory_system.toggle()
             return
+        
+        # Handle armor equipping and food eating with right-click
+        if key == 'f':  # Press F to equip armor or eat food from selected slot
+            held_item_id = self.inventory_system.get_active_block()
+            
+            if held_item_id:
+                # Try to equip armor
+                if held_item_id in TOOL_ARMOR:
+                    if self.equip_armor(held_item_id):
+                        self.inventory_system.decrease_active_item()
+                        return
+                
+                # Try to eat food
+                if held_item_id in FOOD:
+                    if self.eat_food(held_item_id):
+                        self.inventory_system.decrease_active_item()
+                        return
         
         if not self.inventory_system.is_open and not self.crafting_table_ui.enabled:
             if key in ('1', '2', '3', '4', '5', '6', '7', '8', '9'):
@@ -352,7 +459,6 @@ class Player(Entity):
                     if can_break:
                         self.world.remove_block(mouse.hovered_entity)
                         
-                        # --- LOGIKA DROP ITEM ---
                         item_to_give = block_type
                         if block_type == COAL_ORE: item_to_give = COAL
                         elif block_type == IRON_ORE: item_to_give = IRON
@@ -362,11 +468,9 @@ class Player(Entity):
                         if item_to_give:
                             self.inventory_system.add_item(item_to_give)
                     else:
-                        # Opsional: Beri efek visual/suara kalau gagal break
                         print("Not strong enough!") 
 
         if key == 'right mouse down':
-            print("=== RIGHT MOUSE CLICKED ===")
             if mouse.hovered_entity and isinstance(mouse.hovered_entity, Block):
                     if distance(self.position, mouse.hovered_entity.position) < 5:
                         if mouse.hovered_entity.block_type == CRAFTING_TABLE:
@@ -383,11 +487,6 @@ class Player(Entity):
                 
                 mx, my = round(world_x), round(world_y)
                 
-                print(f"Mouse screen pos: {mouse.position}")
-                print(f"Calculated world pos: ({world_x}, {world_y})")
-                print(f"Rounded target: ({mx}, {my})")
-                print(f"Player position: ({self.x}, {self.y})")
-                
                 dx = abs(mx - self.x)
                 dy = abs(my - self.y)
                 
@@ -395,16 +494,10 @@ class Player(Entity):
                 safe_y = (self.scale_y/2) + 0.5
                 
                 if not (dx < safe_x and dy < safe_y):
-                    print("✓ Not inside player safe zone")
-                    
                     dist = distance((mx, my, 0), self.position)
-                    print(f"Distance to target: {dist}")
                     
                     if dist < 5:
-                        print("✓ Within reach")
-                        
                         if (mx, my) not in self.world.block_positions:
-                            print("✓ Position is empty - PLACING BLOCK!")
                             block_to_place = self.inventory_system.get_active_block()
                             
                             if block_to_place:
@@ -413,14 +506,6 @@ class Player(Entity):
                                 if real_block < 100:
                                     self.world.place_block(mx, my, real_block)
                                     self.inventory_system.decrease_active_item()
-                        else:
-                            print("✗ Position already occupied")
-                    else:
-                        print("✗ Too far away")
-                else:
-                    print("✗ Too close to player")
-            else:
-                print("✗ No mouse position")
                             
     def on_destroy(self):
         if hasattr(self, 'cursor_highlight') and self.cursor_highlight:
@@ -434,6 +519,7 @@ class Player(Entity):
         self.position = (self.spawn_x, self.spawn_y)
         self.y_velocity = 0
         self.health = self.max_health
+        self.food = self.max_food
         self.dead = False
         print(f"Respawned at: ({self.spawn_x}, {self.spawn_y})")
 
@@ -444,70 +530,66 @@ class Player(Entity):
 
     def update_health_ui(self):
         """Update Minecraft-style hearts based on current health"""
-        
         for i in range(self.max_hearts):
             heart_hp_threshold = (i + 1) * 10 
             heart_hp_min = i * 10
 
             if self.health >= heart_hp_threshold:
-                # Full heart
                 self.hearts[i].texture = self.heart_full_tex
                 self.hearts[i].enabled = True
             elif self.health > heart_hp_min:
-                # Half heart
                 self.hearts[i].texture = self.heart_half_tex
                 self.hearts[i].enabled = True
             else:
-                # Empty heart
                 self.hearts[i].texture = self.heart_empty_tex
                 self.hearts[i].enabled = True
 
     def update_armor_ui(self):
         """Update Minecraft-style armor icons based on current armor"""
-
-        for i in range(10): # 10 armor icons
-            armor_hp_threshold = (i + 1) * 10 
-            armor_hp_min = i * 10
+        for i in range(10):
+            armor_hp_threshold = (i + 1) * 2 
+            armor_hp_min = i * 2
 
             if self.armor >= armor_hp_threshold:
-                # Full armor icon
                 self.armor_icons[i].texture = self.armor_full_tex
                 self.armor_icons[i].enabled = True
             elif self.armor > armor_hp_min:
-                # Half armor icon
                 self.armor_icons[i].texture = self.armor_half_tex
                 self.armor_icons[i].enabled = True
             else:
-                # Empty armor icon
                 self.armor_icons[i].texture = self.armor_empty_tex
                 self.armor_icons[i].enabled = True
 
     def update_food_ui(self):
         """Update Minecraft-style food icons based on current food"""
-
-        for i in range(10): # 10 food icons
-            food_hp_threshold = (i + 1) * 10 
-            food_hp_min = i * 10
+        for i in range(10):
+            food_hp_threshold = (i + 1) * 2 
+            food_hp_min = i * 2
 
             if self.food >= food_hp_threshold:
-                # Full food icon
                 self.food_icons[i].texture = self.food_full_tex
                 self.food_icons[i].enabled = True
             elif self.food > food_hp_min:
-                # Half food icon
                 self.food_icons[i].texture = self.food_half_tex
                 self.food_icons[i].enabled = True
             else:
-                # Empty food icon
                 self.food_icons[i].texture = self.food_empty_tex
+                self.food_icons[i].enabled = True
 
     def take_damage(self, amount):
-        self.health -= amount
+        """Take damage with armor reduction"""
+        # Calculate damage reduction from armor
+        # Armor reduces damage by (armor / (armor + 10)) * 100%
+        if self.armor > 0:
+            reduction = self.armor / (self.armor + 10)
+            actual_damage = amount * (1 - reduction)
+            print(f"Damage reduced from {amount} to {actual_damage:.1f} by armor ({self.armor} points)")
+        else:
+            actual_damage = amount
+        
+        self.health -= actual_damage
         self.visual.color = color.red
-        invoke(setattr, self.visual, 'color', color.azure, delay=0.1)
-        if self.health <= 0: self.respawn(); self.health = self.max_health
-
-    def respawn(self):
-        self.position = (int(WIDTH/2), self.world.surface_heights[int(WIDTH/2)] + 4)
-        self.y_velocity = 0
-
+        invoke(setattr, self.visual, 'color', color.white, delay=0.1)
+        
+        if self.health <= 0:
+            self.die()
