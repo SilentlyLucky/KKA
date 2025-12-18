@@ -257,6 +257,8 @@ class World(Entity):
         
         to_remove_fg = []
         for pos, entity in self.block_dict.items():
+            if getattr(entity, 'persistent', False):
+                continue
             if (abs(pos[0] - cam_x) > unload_dist_x or 
                 abs(pos[1] - cam_y) > unload_dist_y):
                 to_remove_fg.append(pos)
@@ -348,6 +350,13 @@ class World(Entity):
         self.blocks.append(b)
         self.block_positions.add((x, y))
         self.block_dict[(x, y)] = b
+
+        lvl = (
+            self.light_map[x][y]
+            if self.map_data[x][y] == 0
+            else self._light_for_solid(x, y)
+        )
+        b.set_light_level(lvl)
 
     def place_block(self, x, y, block_type):
         if (x,y) in self.block_dict:
@@ -547,4 +556,4 @@ class World(Entity):
         return max(0, best - 1)
     
     def is_light_blocking(self, x, y):
-        return self.solid_map[x][y]
+        return self.map_data[x][y] not in (0, GRASS_PLANT, LOG, LEAVES)
