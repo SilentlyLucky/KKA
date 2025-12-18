@@ -230,7 +230,7 @@ def set_difficulty(difficulty):
         ZOMBIE_PATH_UPDATE_RATE = 0.5 
 
         # Chicken Buff (More Food)
-        CHICKEN_SPAWN_RATE = 10.0       
+        CHICKEN_SPAWN_RATE = 15.0       
 
     elif difficulty == 'HARD':
         # Player Standard

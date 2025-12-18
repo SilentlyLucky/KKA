@@ -85,7 +85,7 @@ RECIPES_3x3 = {
     ((None, None, None), (DIAMOND, None, DIAMOND), (DIAMOND, None, DIAMOND)): (DIAMOND_BOOTS, 1),
     
     ((None, None, None),
-     (PLANK, PLANK, PLANK),
+     (FEATHER, FEATHER, FEATHER),
      (PLANK, PLANK, PLANK)): (BED_ITEM, 1), 
 }
 
