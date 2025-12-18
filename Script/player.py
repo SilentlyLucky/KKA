@@ -199,6 +199,34 @@ class Player(Entity):
                 total += TOOL_ARMOR[item_id]
         return total
 
+    def sync_armor_from_inventory(self):
+        """Sync armor equipment from inventory armor slots (41-44)"""
+        for inv_index, slot_name in self.armor_slot_mapping.items():
+            item = self.inventory_system.items[inv_index]
+            if item:
+                self.equipped_armor[slot_name] = item['id']
+            else:
+                self.equipped_armor[slot_name] = None
+        
+        self.armor = self.calculate_armor()
+        self.update_armor_ui()  # Update the visual armor bar
+        print(f"[ARMOR SYNC] Total armor: {self.armor}")
+
+    def on_armor_changed(self, slot_index):
+        """Called by inventory when armor slot changes"""
+        if slot_index in self.armor_slot_mapping:
+            slot_name = self.armor_slot_mapping[slot_index]
+            item = self.inventory_system.items[slot_index]
+            
+            if item:
+                self.equipped_armor[slot_name] = item['id']
+            else:
+                self.equipped_armor[slot_name] = None
+            
+            self.armor = self.calculate_armor()
+            self.update_armor_ui()  # Update the visual armor bar
+            print(f"[ARMOR CHANGE] {slot_name}: {item['id'] if item else None} - Total armor: {self.armor}")
+
     def equip_armor(self, item_id):
         """Equip an armor piece"""
         armor_slot = None
@@ -592,4 +620,5 @@ class Player(Entity):
         invoke(setattr, self.visual, 'color', color.white, delay=0.1)
         
         if self.health <= 0:
+
             self.die()
